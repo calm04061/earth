@@ -736,28 +736,16 @@ const starMat = new THREE.PointsMaterial({
 const stars = new THREE.Points(starGeo, starMat);
 scene.add(stars);
 
-// ─── Tool Markers & Labels ──────────────────────────────────
+// ─── Orbital Satellite System ────────────────────────────────
 
-const markers = [];
-const labelElements = [];
+const ORBITS = [
+  { inclination: 0, radius: 2.8, speed: 0.12, count: 3, color: 0x4FC3F7 },
+  { inclination: Math.PI * 0.4, radius: 3.2, speed: 0.08, count: 3, color: 0xBA68C8 },
+  { inclination: Math.PI * 0.85, radius: 3.0, speed: 0.15, count: 3, color: 0xFFB74D },
+  { inclination: -Math.PI * 0.32, radius: 3.4, speed: 0.1, count: 3, color: 0x81C784 },
+];
 
-const fibonacciSphere = (count, radius) => {
-  const points = [];
-  const phi = Math.PI * (3 - Math.sqrt(5));
-  for (let i = 0; i < count; i++) {
-    const y = 1 - (i / (count - 1)) * 2;
-    const rAtY = Math.sqrt(1 - y * y);
-    const theta = phi * i;
-    points.push(new THREE.Vector3(
-      Math.cos(theta) * rAtY * radius,
-      y * radius,
-      Math.sin(theta) * rAtY * radius
-    ));
-  }
-  return points;
-};
-
-const toolPositions = fibonacciSphere(TOOLS.length, RADIUS);
+const satelliteData = [];
 
 const markerCanvas = document.createElement('canvas');
 markerCanvas.width = 64;
@@ -772,72 +760,117 @@ mCtx.fillStyle = gradient;
 mCtx.fillRect(0, 0, 64, 64);
 const markerTexture = new THREE.CanvasTexture(markerCanvas);
 
-TOOLS.forEach((tool, i) => {
-  const pos = toolPositions[i];
-
-  // Glow marker sprite
-  const markerMat = new THREE.SpriteMaterial({
-    map: markerTexture,
-    blending: THREE.AdditiveBlending,
-    depthTest: true,
-    transparent: true,
-    opacity: 0.9,
-    color: new THREE.Color(tool.color),
-  });
-  const marker = new THREE.Sprite(markerMat);
-  marker.position.copy(pos);
-  marker.scale.set(0.45, 0.45, 1);
-  scene.add(marker);
-  markers.push(marker);
-
-  // Small glowing dot
-  const dotGeo = new THREE.SphereGeometry(0.035, 8, 8);
-  const dotMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(tool.color) });
-  const dot = new THREE.Mesh(dotGeo, dotMat);
-  dot.position.copy(pos);
-  scene.add(dot);
-
-  // Label
-  const labelDiv = document.createElement('div');
-  labelDiv.className = 'tool-label';
-  labelDiv.dataset.index = i;
-  labelDiv.innerHTML = `<span class="label-icon">${tool.icon}</span><span class="label-name">${tool.name}</span>`;
-
-  const labelPos = pos.clone().normalize().multiplyScalar(RADIUS * 1.35);
-  const label = new CSS2DObject(labelDiv);
-  label.position.copy(labelPos);
-  scene.add(label);
-  labelElements.push(label);
-
-  labelDiv.addEventListener('click', (e) => {
-    e.stopPropagation();
-    openTool(i, labelDiv);
-  });
-});
-
-// ─── Particle ring ───────────────────────────────────────────
-
-const ringParticles = 800;
-const ringGeo2 = new THREE.BufferGeometry();
-const ringPos2 = new Float32Array(ringParticles * 3);
-for (let i = 0; i < ringParticles; i++) {
-  const a = Math.random() * Math.PI * 2;
-  const r = RADIUS * (1.5 + Math.random() * 0.8);
-  const y = (Math.random() - 0.5) * RADIUS * 0.6;
-  ringPos2[i * 3] = Math.cos(a) * r;
-  ringPos2[i * 3 + 1] = y;
-  ringPos2[i * 3 + 2] = Math.sin(a) * r;
+function getOrbitPos(radius, inclination, theta) {
+  return new THREE.Vector3(
+    radius * Math.cos(theta),
+    -radius * Math.sin(theta) * Math.sin(inclination),
+    radius * Math.sin(theta) * Math.cos(inclination)
+  );
 }
-ringGeo2.setAttribute('position', new THREE.BufferAttribute(ringPos2, 3));
-const ringMat2 = new THREE.PointsMaterial({
-  color: 0x4FC3F7,
-  size: 0.03,
-  transparent: true,
-  opacity: 0.3,
-  sizeAttenuation: true,
+
+let toolIdx = 0;
+ORBITS.forEach((orbit) => {
+  // ── Orbital ring line ──
+  const ringSegs = 80;
+  const ringPts = [];
+  for (let i = 0; i <= ringSegs; i++) {
+    const theta = (i / ringSegs) * Math.PI * 2;
+    ringPts.push(getOrbitPos(orbit.radius, orbit.inclination, theta));
+  }
+  const ringGeo = new THREE.BufferGeometry().setFromPoints(ringPts);
+  const ringLineMat = new THREE.LineBasicMaterial({
+    color: orbit.color,
+    transparent: true,
+    opacity: 0.12,
+  });
+  scene.add(new THREE.Line(ringGeo, ringLineMat));
+
+  // ── Orbital ring dots ──
+  const dotCount = 100;
+  const dotPositions = new Float32Array(dotCount * 3);
+  for (let i = 0; i < dotCount; i++) {
+    const theta = (i / dotCount) * Math.PI * 2;
+    const p = getOrbitPos(orbit.radius, orbit.inclination, theta);
+    dotPositions[i * 3] = p.x;
+    dotPositions[i * 3 + 1] = p.y;
+    dotPositions[i * 3 + 2] = p.z;
+  }
+  const dotGeo = new THREE.BufferGeometry();
+  dotGeo.setAttribute('position', new THREE.BufferAttribute(dotPositions, 3));
+  const dotMat = new THREE.PointsMaterial({
+    color: orbit.color,
+    size: 0.03,
+    transparent: true,
+    opacity: 0.3,
+    sizeAttenuation: true,
+  });
+  scene.add(new THREE.Points(dotGeo, dotMat));
+
+  // ── Satellites on this orbit ──
+  for (let i = 0; i < orbit.count; i++) {
+    if (toolIdx >= TOOLS.length) break;
+    const tool = TOOLS[toolIdx];
+    const startAngle = (i / orbit.count) * Math.PI * 2 + 0.3;
+
+    // Glow sprite
+    const markerMat = new THREE.SpriteMaterial({
+      map: markerTexture,
+      blending: THREE.AdditiveBlending,
+      depthTest: true,
+      transparent: true,
+      opacity: 0.9,
+      color: new THREE.Color(tool.color),
+    });
+    const marker = new THREE.Sprite(markerMat);
+    marker.scale.set(0.35, 0.35, 1);
+    scene.add(marker);
+
+    // Core dot
+    const dotGeo3 = new THREE.SphereGeometry(0.028, 8, 8);
+    const dotMat3 = new THREE.MeshBasicMaterial({ color: new THREE.Color(tool.color) });
+    const dot = new THREE.Mesh(dotGeo3, dotMat3);
+    scene.add(dot);
+
+    // Tether line (satellite → globe surface)
+    const lineGeo = new THREE.BufferGeometry();
+    const linePos = new Float32Array(6);
+    lineGeo.setAttribute('position', new THREE.BufferAttribute(linePos, 3));
+    const lineMat = new THREE.LineBasicMaterial({
+      color: tool.color,
+      transparent: true,
+      opacity: 0.07,
+      depthWrite: false,
+    });
+    const tether = new THREE.Line(lineGeo, lineMat);
+    scene.add(tether);
+
+    // Label
+    const labelDiv = document.createElement('div');
+    labelDiv.className = 'tool-label';
+    labelDiv.dataset.toolIndex = toolIdx;
+    labelDiv.innerHTML = `<span class="label-icon">${tool.icon}</span><span class="label-name">${tool.name}</span>`;
+    const label = new CSS2DObject(labelDiv);
+    scene.add(label);
+
+    labelDiv.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openTool(toolIdx, labelDiv);
+    });
+
+    satelliteData.push({
+      orbit,
+      startAngle,
+      marker,
+      dot,
+      tether,
+      linePos,
+      lineGeo,
+      label,
+    });
+
+    toolIdx++;
+  }
 });
-const ringPoints = new THREE.Points(ringGeo2, ringMat2);
-scene.add(ringPoints);
 
 // ─── Popup System ───────────────────────────────────────────
 
@@ -962,17 +995,38 @@ document.addEventListener('keydown', (e) => {
 function animate() {
   requestAnimationFrame(animate);
   controls.update();
+  const t = Date.now() * 0.001;
 
-  // Pulse markers
-  const pulse = 1 + Math.sin(Date.now() * 0.002) * 0.08;
-  markers.forEach((m, i) => {
-    const phase = i * 0.5;
-    const s = pulse + Math.sin(Date.now() * 0.002 + phase) * 0.04;
-    m.scale.set(s * 0.45, s * 0.45, 1);
+  // Update satellite orbital positions
+  satelliteData.forEach((sat) => {
+    const theta = sat.startAngle + t * sat.orbit.speed;
+    const pos = getOrbitPos(sat.orbit.radius, sat.orbit.inclination, theta);
+
+    sat.marker.position.copy(pos);
+    sat.dot.position.copy(pos);
+
+    // Update tether line
+    const dir = pos.clone().normalize();
+    sat.linePos[0] = dir.x * RADIUS;
+    sat.linePos[1] = dir.y * RADIUS;
+    sat.linePos[2] = dir.z * RADIUS;
+    sat.linePos[3] = pos.x;
+    sat.linePos[4] = pos.y;
+    sat.linePos[5] = pos.z;
+    sat.lineGeo.attributes.position.needsUpdate = true;
+
+    // Label offset (radially outward from globe center)
+    const labelR = sat.orbit.radius + 0.45;
+    sat.label.position.set(
+      dir.x * labelR,
+      dir.y * labelR,
+      dir.z * labelR
+    );
+
+    // Pulse glow
+    const pulse = 1 + Math.sin(t * 1.5 + sat.startAngle) * 0.12;
+    sat.marker.scale.set(pulse * 0.35, pulse * 0.35, 1);
   });
-
-  // Rotate ring
-  ringPoints.rotation.y += 0.0008;
 
   // Rotate stars slowly
   stars.rotation.y += 0.0002;

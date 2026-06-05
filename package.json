@@ -10,6 +10,7 @@
     "deploy": "vite build && gh-pages -d dist"
   },
   "dependencies": {
+    "playwright": "^1.60.0",
     "three": "^0.160.0"
   },
   "devDependencies": {

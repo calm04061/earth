@@ -150,9 +150,26 @@ onUnmounted(() => {
 .popup-leave-to { opacity: 0; transform: scale(0.9); }
 
 @media (max-width: 600px) {
-  .popup-card { width: 96vw; max-height: 90vh; border-radius: 16px; }
+  .popup-card {
+    width: 96vw;
+    max-height: 90vh;
+    max-height: calc(90vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+    border-radius: 16px;
+    margin-top: env(safe-area-inset-top, 0px);
+    margin-bottom: env(safe-area-inset-bottom, 0px);
+  }
   .popup-header { padding: 14px 16px 10px; }
   .popup-body { padding: 14px 16px 18px; }
   .info-text { font-size: 12px; bottom: 16px; }
+}
+
+@media (max-width: 400px) {
+  .popup-card { width: 100vw; border-radius: 12px; max-height: 92vh; }
+  .popup-header { padding: 12px 12px 8px; gap: 8px; }
+  .popup-header-icon { font-size: 18px; }
+  .popup-header-title { font-size: 15px; }
+  .popup-close-btn { width: 28px; height: 28px; font-size: 14px; }
+  .popup-body { padding: 10px 12px 14px; }
+  .info-text { font-size: 11px; bottom: 12px; }
 }
 </style>

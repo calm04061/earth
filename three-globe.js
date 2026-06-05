@@ -19,13 +19,16 @@ function getOrbitPos(radius, inclination, theta) {
 
 export function createGlobe(container, tools, onToolClick) {
   const RADIUS = 1.8;
-  const w = container.clientWidth;
-  const h = container.clientHeight;
+  const isMobile = container.clientWidth < 600;
+  let w = container.clientWidth;
+  let h = container.clientHeight;
 
   // Scene
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(40, w / h, 0.1, 2000);
-  camera.position.set(0, 0.8, 5.5);
+  const fov = isMobile ? 45 : 40;
+  const camera = new THREE.PerspectiveCamera(fov, w / h, 0.1, 2000);
+  const camDist = isMobile ? 6.5 : 5.5;
+  camera.position.set(0, 0.8, camDist);
 
   // WebGL renderer
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -33,6 +36,7 @@ export function createGlobe(container, tools, onToolClick) {
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.2;
+  renderer.domElement.style.touchAction = 'none';
   container.appendChild(renderer.domElement);
 
   // CSS2D renderer for labels
@@ -265,19 +269,23 @@ export function createGlobe(container, tools, onToolClick) {
 
   // ─── Resize ───
   function onResize() {
-    const w = container.clientWidth;
-    const h = container.clientHeight;
+    w = container.clientWidth;
+    h = container.clientHeight;
+    const mobile = w < 600;
+    camera.fov = mobile ? 46 : 40;
     camera.aspect = w / h;
+    camera.position.set(0, 0.8, mobile ? 6.8 : 5.5);
     camera.updateProjectionMatrix();
     renderer.setSize(w, h);
     labelRenderer.setSize(w, h);
   }
-  window.addEventListener('resize', onResize);
+  const resizeObs = new ResizeObserver(onResize);
+  resizeObs.observe(container);
 
   // ─── Cleanup ───
   function dispose() {
     cancelAnimationFrame(animId);
-    window.removeEventListener('resize', onResize);
+    resizeObs.disconnect();
     controls.dispose();
     renderer.dispose();
     container.removeChild(renderer.domElement);

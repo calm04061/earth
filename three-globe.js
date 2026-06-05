@@ -69,19 +69,31 @@ export function createGlobe(container, tools, onToolClick) {
 
   // Globe sphere
   const globeGeo = new THREE.SphereGeometry(RADIUS, 64, 64);
-  const textureLoader = new THREE.TextureLoader();
-  const earthMap = textureLoader.load('/earth-map.jpg');
   const globeMat = new THREE.MeshPhysicalMaterial({
-    map: earthMap,
-    emissive: 0x0a1a3a,
-    emissiveIntensity: 0.15,
+    color: 0x1a2a4a,
+    emissive: 0x0a1525,
+    emissiveIntensity: 0.1,
     metalness: 0.05,
-    roughness: 0.4,
+    roughness: 0.5,
     transparent: true,
     opacity: 0.92,
-    clearcoat: 0.1,
   });
-  scene.add(new THREE.Mesh(globeGeo, globeMat));
+  const globeMesh = new THREE.Mesh(globeGeo, globeMat);
+  scene.add(globeMesh);
+
+  // Load earth texture
+  const loader = new THREE.TextureLoader();
+  loader.load(
+    import.meta.env.BASE_URL + 'earth-map.jpg',
+    (tex) => {
+      globeMat.map = tex;
+      globeMat.color.set(0xffffff);
+      globeMat.emissiveIntensity = 0.05;
+      globeMat.needsUpdate = true;
+    },
+    undefined,
+    () => {} // onError - silently keep fallback
+  );
 
   // Wireframe
   const wireGeo = new THREE.SphereGeometry(RADIUS * 1.005, 28, 18);

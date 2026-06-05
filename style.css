@@ -854,10 +854,49 @@ html, body {
   text-align: center;
 }
 
+.compass-unavailable {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 40px 0;
+  color: rgba(255,255,255,0.5);
+}
+
+.compass-unavailable .compass-icon {
+  font-size: 56px;
+}
+
+.compass-unavailable p {
+  font-size: 15px;
+  color: rgba(255,255,255,0.7);
+}
+
+.compass-unavailable .sub {
+  font-size: 12px;
+  color: rgba(255,255,255,0.35);
+}
+
+.compass-permit-btn {
+  margin-top: 4px;
+  padding: 10px 24px;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #4FC3F7, #2196F3);
+  color: #fff;
+  font-size: 15px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: transform 0.15s;
+}
+
+.compass-permit-btn:hover { transform: scale(1.05); }
+.compass-permit-btn:active { transform: scale(0.95); }
+
 .compass-wrap {
   width: 200px;
   height: 200px;
-  margin: 0 auto 12px;
+  margin: 0 auto 8px;
   position: relative;
 }
 
@@ -876,6 +915,16 @@ html, body {
   font-size: 14px;
   color: rgba(255,255,255,0.4);
   margin-top: 2px;
+}
+
+.compass-status {
+  font-size: 11px;
+  color: rgba(255,255,255,0.25);
+  margin-top: 6px;
+}
+
+.compass-status.ok {
+  color: rgba(79, 195, 247, 0.5);
 }
 
 /* ── Tool: Color Picker ── */

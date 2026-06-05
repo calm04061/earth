@@ -1,8 +1,21 @@
 <template>
   <div class="tool-compass">
-    <div class="compass-wrap"><canvas ref="canvasRef" width="200" height="200"></canvas></div>
-    <div class="compass-direction">{{ direction }}</div>
-    <div class="compass-degree">{{ degree }}°</div>
+    <div v-if="unavailable" class="compass-unavailable">
+      <div class="compass-icon">🧭</div>
+      <p>请在移动设备上使用</p>
+      <span class="sub">指南针需要设备方向传感器</span>
+    </div>
+    <div v-else-if="needsPermission" class="compass-unavailable">
+      <div class="compass-icon">🧭</div>
+      <p>需要获取设备方向权限</p>
+      <button class="compass-permit-btn" @click="requestPermission">允许访问</button>
+    </div>
+    <div v-else>
+      <div class="compass-wrap"><canvas ref="canvasRef" width="200" height="200"></canvas></div>
+      <div class="compass-direction">{{ direction }}</div>
+      <div class="compass-degree">{{ degree }}°</div>
+      <div class="compass-status" :class="{ ok: hasFix }">{{ statusText }}</div>
+    </div>
   </div>
 </template>
 
@@ -12,15 +25,21 @@ import { ref, onMounted, onUnmounted } from 'vue';
 const canvasRef = ref(null);
 const direction = ref('北');
 const degree = ref('0');
+const hasFix = ref(false);
+const statusText = ref('校准中...');
+const unavailable = ref(false);
+const needsPermission = ref(false);
+
 const dirs = ['北', '东北', '东', '东南', '南', '西南', '西', '西北'];
-let angle = 0;
-let isDragging = false, lastX = 0;
+let heading = 0;
+let animFrame = null;
 
 function draw() {
   const canvas = canvasRef.value;
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
   const cx = 100, cy = 100, r = 90;
+  const angle = -heading;
 
   ctx.clearRect(0, 0, 200, 200);
   ctx.beginPath();
@@ -35,12 +54,13 @@ function draw() {
     const a = (i * 45 + angle - 90) * Math.PI / 180;
     const x = cx + Math.cos(a) * (r - 14);
     const y = cy + Math.sin(a) * (r - 14);
-    ctx.fillStyle = '#fff';
-    ctx.font = '11px sans-serif';
+    ctx.fillStyle = i === 0 ? '#FF5252' : '#fff';
+    ctx.font = '12px sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(dirs[i], x, y);
   }
+
   for (let i = 0; i < 72; i++) {
     const a = (i * 5 + angle - 90) * Math.PI / 180;
     const len = i % 6 === 0 ? 12 : 6;
@@ -53,7 +73,7 @@ function draw() {
   }
 
   const needle = (a, color) => {
-    const rad = (a + angle - 90) * Math.PI / 180;
+    const rad = (a - 90) * Math.PI / 180;
     ctx.beginPath();
     ctx.moveTo(cx + Math.cos(rad) * (r - 10), cy + Math.sin(rad) * (r - 10));
     ctx.lineTo(cx - Math.cos(rad + 0.4) * 14, cy - Math.sin(rad + 0.4) * 14);
@@ -69,35 +89,66 @@ function draw() {
   ctx.fillStyle = '#4FC3F7';
   ctx.fill();
 
-  const idx = Math.round(((angle % 360 + 360) % 360) / 45) % 8;
+  const idx = Math.round((((heading % 360) + 360) % 360) / 45) % 8;
   direction.value = dirs[idx];
-  degree.value = String(Math.round(((angle % 360 + 360) % 360)));
+  degree.value = String(Math.round(((heading % 360) + 360) % 360));
 }
 
-function onPointerDown(e) { isDragging = true; lastX = e.clientX || (e.touches && e.touches[0].clientX); }
-function onPointerMove(e) {
-  if (!isDragging) return;
-  angle += ((e.clientX || (e.touches && e.touches[0].clientX)) - lastX) * 0.5;
-  lastX = e.clientX || (e.touches && e.touches[0].clientX);
+function renderLoop() {
   draw();
+  animFrame = requestAnimationFrame(renderLoop);
 }
-function onPointerUp() { isDragging = false; }
+
+function onOrientation(e) {
+  const a = e.alpha;
+  if (a !== null && a !== undefined) {
+    heading = a;
+    hasFix.value = true;
+    statusText.value = '传感器已连接';
+  }
+}
+
+async function requestPermission() {
+  if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+    try {
+      const res = await DeviceOrientationEvent.requestPermission();
+      if (res === 'granted') {
+        needsPermission.value = false;
+        window.addEventListener('deviceorientation', onOrientation);
+      }
+    } catch {}
+  }
+}
 
 onMounted(() => {
-  draw();
-  const el = canvasRef.value;
-  if (!el) return;
-  el.addEventListener('mousedown', onPointerDown);
-  window.addEventListener('mousemove', onPointerMove);
-  window.addEventListener('mouseup', onPointerUp);
-  el.addEventListener('touchstart', onPointerDown);
-  window.addEventListener('touchmove', onPointerMove);
-  window.addEventListener('touchend', onPointerUp);
+  const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+  if (!isMobile) {
+    unavailable.value = true;
+    return;
+  }
+
+  // Check if permission API is needed (iOS 13+)
+  if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+    needsPermission.value = true;
+    return;
+  }
+
+  // Try regular API
+  window.addEventListener('deviceorientation', onOrientation);
+  renderLoop();
+
+  // Fallback: if no event fires within 3s, show unavailable
+  setTimeout(() => {
+    if (!hasFix.value) {
+      unavailable.value = true;
+      window.removeEventListener('deviceorientation', onOrientation);
+    }
+  }, 3000);
 });
+
 onUnmounted(() => {
-  window.removeEventListener('mousemove', onPointerMove);
-  window.removeEventListener('mouseup', onPointerUp);
-  window.removeEventListener('touchmove', onPointerMove);
-  window.removeEventListener('touchend', onPointerUp);
+  if (animFrame) cancelAnimationFrame(animFrame);
+  window.removeEventListener('deviceorientation', onOrientation);
 });
 </script>

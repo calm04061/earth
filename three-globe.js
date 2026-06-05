@@ -219,7 +219,7 @@ export function createGlobe(container, tools, onToolClick) {
       labelDiv.addEventListener('click', (e) => {
         e.stopPropagation();
         controls.autoRotate = false;
-        onToolClick(toolIdx);
+        onToolClick(Number(e.currentTarget.dataset.toolIndex));
       });
 
       satelliteData.push({

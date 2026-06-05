@@ -69,14 +69,16 @@ export function createGlobe(container, tools, onToolClick) {
 
   // Globe sphere
   const globeGeo = new THREE.SphereGeometry(RADIUS, 64, 64);
+  const textureLoader = new THREE.TextureLoader();
+  const earthMap = textureLoader.load('/earth-map.jpg');
   const globeMat = new THREE.MeshPhysicalMaterial({
-    color: 0x0a1a3a,
-    emissive: 0x0d2147,
-    emissiveIntensity: 0.3,
-    metalness: 0.1,
-    roughness: 0.3,
+    map: earthMap,
+    emissive: 0x0a1a3a,
+    emissiveIntensity: 0.15,
+    metalness: 0.05,
+    roughness: 0.4,
     transparent: true,
-    opacity: 0.85,
+    opacity: 0.92,
     clearcoat: 0.1,
   });
   scene.add(new THREE.Mesh(globeGeo, globeMat));

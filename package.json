@@ -10,8 +10,10 @@
     "deploy": "vite build && gh-pages -d dist"
   },
   "dependencies": {
+    "@vitejs/plugin-vue": "^5.2.4",
     "playwright": "^1.60.0",
-    "three": "^0.160.0"
+    "three": "^0.160.0",
+    "vue": "^3.5.35"
   },
   "devDependencies": {
     "gh-pages": "^6.3.0",

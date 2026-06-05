@@ -22,7 +22,8 @@ await page.screenshot({ path: 'screenshot-2-calc.png', fullPage: false });
 
 // Close, open another
 await page.evaluate(() => {
-  document.getElementById('popup-close').click();
+  const btn = document.querySelector('.popup-close-btn');
+  if (btn) btn.click();
 });
 await page.waitForTimeout(1000);
 
@@ -37,7 +38,8 @@ await page.screenshot({ path: 'screenshot-3-clock.png', fullPage: false });
 
 // Close, open drawing
 await page.evaluate(() => {
-  document.getElementById('popup-close').click();
+  const btn = document.querySelector('.popup-close-btn');
+  if (btn) btn.click();
 });
 await page.waitForTimeout(1000);
 

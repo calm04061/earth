@@ -198,8 +198,6 @@ html, body {
 
 .calc-3d-wrap canvas {
   display: block;
-  width: 100% !important;
-  height: auto !important;
 }
 
 /* ── Tool: Weather ── */

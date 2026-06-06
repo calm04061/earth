@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "deploy": "vite build && gh-pages -d dist",
-    "build:chrome": "node scripts/generate-icons.mjs && vite build --config vite.config.chrome.js"
+    "build:chrome": "node scripts/generate-icons.mjs && vite build --config vite.config.chrome.js",
+    "build:chrome:zip": "npm run build:chrome && cd chrome-dist && zip -r ../chrome-extension.zip ."
   },
   "dependencies": {
     "@vitejs/plugin-vue": "^5.2.4",

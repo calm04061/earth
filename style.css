@@ -1045,6 +1045,27 @@ html, body {
 
 .camera-capture-btn:hover { transform: scale(1.1); }
 .camera-capture-btn:active::after { background: #ccc; }
+.camera-capture-btn.disabled { opacity: 0.3; cursor: not-allowed; pointer-events: none; }
+
+.camera-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+}
+
+.camera-btn {
+  padding: 8px 18px;
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.8);
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s;
+}
+
+.camera-btn:hover { background: rgba(255,255,255,0.15); color: #fff; }
 
 /* ── Tool: QR Code ── */
 .tool-qrcode {

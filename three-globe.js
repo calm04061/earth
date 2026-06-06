@@ -18,17 +18,18 @@ function getOrbitPos(radius, inclination, theta) {
 }
 
 export function createGlobe(container, tools, onToolClick) {
-  const RADIUS = 1.8;
-  const isMobile = container.clientWidth < 600;
+  const RADIUS = 1.3;
   let w = container.clientWidth;
   let h = container.clientHeight;
 
+  const sceneScale = Math.max(0.55, Math.min(1.3, Math.min(w, h) / 700));
+
   // Scene
   const scene = new THREE.Scene();
-  const fov = isMobile ? 45 : 40;
+  const fov = 38 + 10 * Math.max(0, Math.min(1, (600 - Math.min(w, h)) / 300));
   const camera = new THREE.PerspectiveCamera(fov, w / h, 0.1, 2000);
-  const camDist = isMobile ? 6.5 : 5.5;
-  camera.position.set(0, 0.8, camDist);
+  const camDist = 5 + 3 * Math.max(0, Math.min(1, (600 - Math.min(w, h)) / 300));
+  camera.position.set(0, 0.8 * sceneScale, camDist);
 
   // WebGL renderer
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -98,7 +99,7 @@ export function createGlobe(container, tools, onToolClick) {
   // Wireframe
   const wireGeo = new THREE.SphereGeometry(RADIUS * 1.005, 28, 18);
   const wireMat = new THREE.MeshBasicMaterial({
-    color: 0x4FC3F7, wireframe: true, transparent: true, opacity: 0.12,
+    color: 0x4FC3F7, wireframe: true, transparent: true, opacity: 0.025,
   });
   scene.add(new THREE.Mesh(wireGeo, wireMat));
 
@@ -112,7 +113,7 @@ export function createGlobe(container, tools, onToolClick) {
     const geo = new THREE.BufferGeometry().setFromPoints(pts.map(p => new THREE.Vector3(p.x, y * RADIUS * 1.006, p.y)));
     scene.add(new THREE.Line(geo, new THREE.LineBasicMaterial({ color, transparent: true, opacity })));
   };
-  for (let i = -80; i <= 80; i += 20) addRing(i * Math.PI / 180, 0x4FC3F7, i === 0 ? 0.25 : 0.1);
+  for (let i = -80; i <= 80; i += 20) addRing(i * Math.PI / 180, 0x4FC3F7, i === 0 ? 0.05 : 0.02);
 
   // Meridians
   for (let i = 0; i < 360; i += 30) {
@@ -127,17 +128,10 @@ export function createGlobe(container, tools, onToolClick) {
       ));
     }
     const geo = new THREE.BufferGeometry().setFromPoints(pts);
-    scene.add(new THREE.Line(geo, new THREE.LineBasicMaterial({ color: 0x4FC3F7, transparent: true, opacity: 0.07 })));
+    scene.add(new THREE.Line(geo, new THREE.LineBasicMaterial({ color: 0x4FC3F7, transparent: true, opacity: 0.015 })));
   }
 
-  // Atmosphere glow
-  const glowMat = new THREE.ShaderMaterial({
-    vertexShader: `varying vec3 vNormal;varying vec3 vPositionW;void main(){vNormal=normalize(normalMatrix*normal);vec4 worldPos=modelMatrix*vec4(position,1.0);vPositionW=worldPos.xyz;gl_Position=projectionMatrix*viewMatrix*worldPos;}`,
-    fragmentShader: `varying vec3 vNormal;varying vec3 vPositionW;uniform vec3 uColor;uniform float uIntensity;void main(){vec3 viewDir=normalize(cameraPosition-vPositionW);float rim=1.0-max(0.0,dot(viewDir,vNormal));float glow=pow(rim,3.0)*uIntensity;gl_FragColor=vec4(uColor,glow*0.8);}`,
-    uniforms: { uColor: { value: new THREE.Color(0x4FC3F7) }, uIntensity: { value: 1.5 } },
-    transparent: true, side: THREE.FrontSide, blending: THREE.AdditiveBlending, depthWrite: false,
-  });
-  scene.add(new THREE.Mesh(new THREE.SphereGeometry(RADIUS * 1.15, 32, 32), glowMat));
+  // (atmosphere glow removed per request)
 
   // Stars
   const starCount = 2000;

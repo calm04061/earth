@@ -69,13 +69,13 @@ function initScene(el) {
   const h = Math.min(w * 0.75, 340);
 
   scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x0a0a1a);
 
-  camera = new THREE.PerspectiveCamera(38, w / h, 0.1, 50);
-  camera.position.set(0, 0.1, 5.5);
-  camera.lookAt(0, -0.15, 0);
+  camera = new THREE.PerspectiveCamera(42, w / h, 0.1, 50);
+  camera.position.set(0, 1.2, 5.5);
+  camera.lookAt(0, 0.5, 0);
 
-  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setClearColor(0x000000, 0);
   renderer.setSize(w, h);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.toneMapping = THREE.ACESFilmicToneMapping;

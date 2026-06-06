@@ -110,9 +110,6 @@ html, body {
   position: relative;
   width: min(92vw, 460px);
   max-height: 85vh;
-  background: rgba(12, 16, 40, 0.92);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(79, 195, 247, 0.15);
   border-radius: 20px;
   box-shadow:
@@ -193,7 +190,7 @@ html, body {
   border-radius: 14px;
   overflow: hidden;
   border: 1px solid rgba(255,255,255,0.06);
-  background: #0a0a1a;
+  background: linear-gradient(to bottom, #0a0a1a 50%, transparent 100%);
 }
 
 .calc-3d-wrap canvas {

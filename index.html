@@ -2,13 +2,16 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
   <title>3D 地球工具集</title>
+  <!-- SVG emoji favicon，兼容多浏览器 -->
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌍</text></svg>" />
 </head>
 <body>
+  <!-- Vue 3 应用挂载点 — App.vue 将完全接管此元素 -->
   <div id="app"></div>
 
+  <!-- 入口脚本，Vite 自动处理模块加载与 HMR -->
   <script type="module" src="/main.js"></script>
 </body>
 </html>

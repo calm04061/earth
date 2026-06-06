@@ -1,11 +1,15 @@
 <template>
   <div class="tool-weather">
+    <!-- 城市搜索行 -->
     <div class="weather-search">
       <input v-model="cityQuery" placeholder="输入城市名..." @keyup.enter="searchCity" />
       <button @click="searchCity">搜索</button>
     </div>
+    <!-- 3D 天气场景容器 -->
     <div class="weather-3d-wrap" ref="sceneRef"></div>
+    <!-- 加载中提示 -->
     <div v-if="loading" class="weather-loading">加载中...</div>
+    <!-- 天气数据 -->
     <div v-else class="weather-info">
       <div class="weather-temp">{{ temp }}<span>°C</span></div>
       <div class="weather-desc">{{ icon }} {{ desc }} · {{ cityName }}<span v-if="fromCache" class="weather-cached">缓存</span></div>
@@ -22,24 +26,28 @@
 import { ref, onMounted, onUnmounted } from 'vue';
 import * as THREE from 'three';
 
+// ─── 响应式状态 ───
+
 const sceneRef = ref(null);
-const cityQuery = ref('北京');
-const cityName = ref('北京');
-const loading = ref(true);
+const cityQuery = ref('');             // 城市搜索输入框
+const cityName = ref('定位中...');     // 当前城市显示名
+const loading = ref(true);             // 加载状态
 const temp = ref('--');
 const humidity = ref('--');
 const wind = ref('--');
 const rain = ref('--');
 const icon = ref('☀️');
 const desc = ref('--');
-const weatherType = ref(0);
-const fromCache = ref(false);
+const weatherType = ref(0);            // 天气类型（0=晴~6=雾），决定3D场景
+const fromCache = ref(false);          // 数据是否来自缓存
 
+// 30 分钟内存缓存 { key → { temp, humidity, ..., ts } }
 const weatherCache = new Map();
 const CACHE_TTL = 30 * 60 * 1000;
 
-let scene3d = null;
+let scene3d = null;                    // 当前3D场景引用
 
+// ─── WMO 天气代码 → 图标/描述/场景类型 映射表 ───
 const WMO_MAP = {
   0:  { icon: '☀️', desc: '晴朗', type: 0 },
   1:  { icon: '🌤️', desc: '晴转多云', type: 2 },
@@ -68,6 +76,9 @@ function wmoToUI(code) {
   return WMO_MAP[code] || { icon: '🌤️', desc: '未知', type: 0 };
 }
 
+// ─── Open-Meteo API 调用 ───
+
+// 地理编码：城市名 → { lat, lon, name }
 async function geocode(query) {
   const r = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=5&language=zh`);
   if (!r.ok) throw new Error('城市搜索失败');
@@ -77,6 +88,29 @@ async function geocode(query) {
   return { lat: result.latitude, lon: result.longitude, name: result.name + (result.admin1 ? ', ' + result.admin1 : '') };
 }
 
+// 获取当前位置（Promise 封装）
+function getPosition() {
+  return new Promise((resolve, reject) => {
+    navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 8000, enableHighAccuracy: false });
+  });
+}
+
+// 逆地理编码：坐标 → 城市名
+async function reverseGeocode(lat, lon) {
+  try {
+    const r = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=zh&zoom=10`,
+      { headers: { 'User-Agent': '3D-Earth-Toolkit/1.0' } }
+    );
+    if (!r.ok) throw new Error();
+    const d = await r.json();
+    return d.address?.city || d.address?.town || d.address?.county || d.name || `${lat.toFixed(2)}, ${lon.toFixed(2)}`;
+  } catch {
+    return `${lat.toFixed(2)}, ${lon.toFixed(2)}`;
+  }
+}
+
+// 获取实时天气数据
 async function fetchWeather(lat, lon) {
   const r = await fetch(
     `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,precipitation_probability,weather_code,wind_speed_10m`
@@ -85,13 +119,13 @@ async function fetchWeather(lat, lon) {
   return r.json();
 }
 
+// 搜索城市：先查缓存，未命中则调 API
 async function searchCity() {
   const q = cityQuery.value.trim();
   if (!q) return;
   loading.value = true;
   fromCache.value = false;
 
-  // Check cache
   const key = q.toLowerCase();
   const cached = weatherCache.get(key);
   if (cached && Date.now() - cached.ts < CACHE_TTL) {
@@ -127,6 +161,7 @@ async function searchCity() {
   }
 }
 
+// 将数据应用到 UI 并重建 3D 场景
 function applyData(e) {
   temp.value = e.temp;
   humidity.value = e.humidity;
@@ -139,7 +174,7 @@ function applyData(e) {
   rebuildScene();
 }
 
-// ─── 3D Scene ───
+// ─── 3D 场景构建 ───
 
 function disposeScene() {
   if (!scene3d) return;
@@ -151,10 +186,11 @@ function disposeScene() {
   scene3d = null;
 }
 
+// 创建一个云朵（多个球体拼成蓬松形状）
 function createCloud(s, x, y, z, sc, type) {
   const g = new THREE.Group();
   const mat = new THREE.MeshStandardMaterial({
-    color: type >= 3 && type <= 5 ? 0x445566 : 0xffffff,
+    color: type >= 3 && type <= 5 ? 0x445566 : 0xffffff,  // 阴雨天偏暗
     roughness: 0.6, metalness: 0,
     transparent: true, opacity: 0.75,
   });
@@ -173,6 +209,7 @@ function createCloud(s, x, y, z, sc, type) {
   return g;
 }
 
+// 根据天气类型构建完整的 3D 场景
 function buildScene(el, type) {
   const w = el.clientWidth;
   const h = Math.min(w * 0.55, 220);
@@ -191,7 +228,7 @@ function buildScene(el, type) {
   renderer.toneMappingExposure = 1.2;
   el.appendChild(renderer.domElement);
 
-  // Lights
+  // 光照
   scene.add(new THREE.AmbientLight(type >= 4 ? 0x334466 : 0x8899bb, 0.6));
   const sunLight = new THREE.DirectionalLight(0xffeedd, 1.5);
   sunLight.position.set(3, 4, 2);
@@ -200,7 +237,7 @@ function buildScene(el, type) {
   bl.position.set(-2, -1, -3);
   scene.add(bl);
 
-  // Fog disc
+  // 地面雾盘
   const fogMat = new THREE.MeshBasicMaterial({
     color: type === 6 ? 0x889999 : 0x1a2a3a,
     transparent: true, opacity: type === 6 ? 0.6 : 0.2,
@@ -211,7 +248,7 @@ function buildScene(el, type) {
   fogDisc.position.y = -0.6;
   scene.add(fogDisc);
 
-  // Clouds
+  // 云朵
   const clouds = [];
   const cloudPositions = [
     [0, 0.8, 0, 0.7], [-0.6, 0.6, 0.3, 0.5], [0.5, 0.5, -0.2, 0.4],
@@ -228,7 +265,7 @@ function buildScene(el, type) {
     });
   }
 
-  // Sun
+  // 太阳（仅晴天/多云出现）
   let sunMesh = null;
   if (type <= 2) {
     const sunGeo = new THREE.SphereGeometry(0.35, 16, 16);
@@ -253,7 +290,7 @@ function buildScene(el, type) {
     scene.add(glowSprite);
   }
 
-  // Particles
+  // 雨/雪粒子系统
   let particles = null;
   if (type >= 3) {
     const count = type >= 4 ? 500 : 200;
@@ -276,6 +313,7 @@ function buildScene(el, type) {
     scene.add(particles);
   }
 
+  // 动画循环
   let animId;
   function animate() {
     animId = requestAnimationFrame(animate);
@@ -334,12 +372,39 @@ function onResize() {
   scene3d.renderer.setSize(w, h);
 }
 
+async function loadByCoords(lat, lon) {
+  fromCache.value = false;
+  try {
+    const name = await reverseGeocode(lat, lon);
+    cityName.value = name;
+    const data = await fetchWeather(lat, lon);
+    const wmo = data.current.weather_code;
+    const ui = wmoToUI(wmo);
+    applyData({
+      temp: Math.round(data.current.temperature_2m),
+      humidity: data.current.relative_humidity_2m,
+      wind: data.current.wind_speed_10m.toFixed(1),
+      rain: data.current.precipitation_probability ?? '--',
+      wmo, type: ui.type, icon: ui.icon, desc: ui.desc, name, ts: Date.now(),
+    });
+  } finally {
+    loading.value = false;
+  }
+}
+
 onMounted(async () => {
   if (sceneRef.value) {
     scene3d = buildScene(sceneRef.value, 0);
     window.addEventListener('resize', onResize);
   }
-  await searchCity();
+  try {
+    const pos = await getPosition();
+    await loadByCoords(pos.coords.latitude, pos.coords.longitude);
+  } catch {
+    cityQuery.value = '北京';
+    cityName.value = '北京';
+    await searchCity();
+  }
 });
 
 onUnmounted(() => {

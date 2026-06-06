@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "3D 地球工具集",
+  "version": "1.0.0",
+  "description": "3D 地球工具集 — 新标签页显示交互式3D地球与工具卫星",
+  "icons": {
+    "16": "icon-16.png",
+    "48": "icon-48.png",
+    "128": "icon-128.png"
+  },
+  "chrome_url_overrides": {
+    "newtab": "index.html"
+  },
+  "action": {
+    "default_title": "3D 地球工具集",
+    "default_icon": {
+      "16": "icon-16.png",
+      "48": "icon-48.png",
+      "128": "icon-128.png"
+    }
+  }
+}

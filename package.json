@@ -7,7 +7,8 @@
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
     "preview": "vite preview",
-    "deploy": "vite build && gh-pages -d dist"
+    "deploy": "vite build && gh-pages -d dist",
+    "build:chrome": "node scripts/generate-icons.mjs && vite build --config vite.config.chrome.js"
   },
   "dependencies": {
     "@vitejs/plugin-vue": "^5.2.4",

@@ -8,7 +8,7 @@
     <div v-if="loading" class="weather-loading">加载中...</div>
     <div v-else class="weather-info">
       <div class="weather-temp">{{ temp }}<span>°C</span></div>
-      <div class="weather-desc">{{ icon }} {{ desc }} · {{ cityName }}</div>
+      <div class="weather-desc">{{ icon }} {{ desc }} · {{ cityName }}<span v-if="fromCache" class="weather-cached">缓存</span></div>
       <div class="weather-details">
         <div class="weather-detail-item"><span class="label">湿度</span><span class="value">{{ humidity }}%</span></div>
         <div class="weather-detail-item"><span class="label">风速</span><span class="value">{{ wind }}m/s</span></div>
@@ -33,7 +33,10 @@ const rain = ref('--');
 const icon = ref('☀️');
 const desc = ref('--');
 const weatherType = ref(0);
-const error = ref(null);
+const fromCache = ref(false);
+
+const weatherCache = new Map();
+const CACHE_TTL = 30 * 60 * 1000;
 
 let scene3d = null;
 
@@ -86,26 +89,54 @@ async function searchCity() {
   const q = cityQuery.value.trim();
   if (!q) return;
   loading.value = true;
+  fromCache.value = false;
+
+  // Check cache
+  const key = q.toLowerCase();
+  const cached = weatherCache.get(key);
+  if (cached && Date.now() - cached.ts < CACHE_TTL) {
+    applyData(cached);
+    fromCache.value = true;
+    loading.value = false;
+    return;
+  }
+
   try {
     const geo = await geocode(q);
     cityName.value = geo.name;
     const data = await fetchWeather(geo.lat, geo.lon);
-    const cur = data.current;
-    temp.value = Math.round(cur.temperature_2m);
-    humidity.value = cur.relative_humidity_2m;
-    wind.value = cur.wind_speed_10m.toFixed(1);
-    rain.value = cur.precipitation_probability ?? '--';
-    const w = wmoToUI(cur.weather_code);
-    icon.value = w.icon;
-    desc.value = w.desc;
-    weatherType.value = w.type;
-    rebuildScene();
+    const entry = {
+      temp: Math.round(data.current.temperature_2m),
+      humidity: data.current.relative_humidity_2m,
+      wind: data.current.wind_speed_10m.toFixed(1),
+      rain: data.current.precipitation_probability ?? '--',
+      wmo: data.current.weather_code,
+      type: wmoToUI(data.current.weather_code).type,
+      icon: wmoToUI(data.current.weather_code).icon,
+      desc: wmoToUI(data.current.weather_code).desc,
+      name: geo.name,
+      ts: Date.now(),
+    };
+    weatherCache.set(key, entry);
+    applyData(entry);
   } catch (e) {
     icon.value = '⚠️';
     desc.value = e.message;
   } finally {
     loading.value = false;
   }
+}
+
+function applyData(e) {
+  temp.value = e.temp;
+  humidity.value = e.humidity;
+  wind.value = e.wind;
+  rain.value = e.rain;
+  icon.value = e.icon;
+  desc.value = e.desc;
+  weatherType.value = e.type;
+  cityName.value = e.name;
+  rebuildScene();
 }
 
 // ─── 3D Scene ───

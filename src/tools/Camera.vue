@@ -2,7 +2,7 @@
   <div class="tool-camera">
     <div class="camera-viewfinder" ref="viewRef">
       <video v-show="streaming && !capturedImg" ref="videoRef" autoplay playsinline></video>
-      <canvas v-show="capturedImg" ref="canvasRef" :style="{ backgroundImage: `url(${capturedImg})` }"></canvas>
+      <img v-show="capturedImg" :src="capturedImg" alt="captured" />
       <div v-if="!streaming && !capturedImg && !error" class="placeholder">
         <div class="icon">📷</div><span>正在启动相机...</span>
       </div>
@@ -27,7 +27,6 @@ import { ref, onMounted, onUnmounted, nextTick } from 'vue';
 
 const viewRef = ref(null);
 const videoRef = ref(null);
-const canvasRef = ref(null);
 const streaming = ref(false);
 const capturedImg = ref('');
 const error = ref('');

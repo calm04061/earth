@@ -3,17 +3,17 @@
   <div ref="globeRef" class="globe-container"></div>
 
   <!-- 底部提示文字 -->
-  <div class="info-text">{{ onDevPlanet ? '🛠️ 开发者星球 · 点击卫星打开工具' : '🌐 探索工具集 · 点击卫星打开' }}</div>
+  <div class="info-text">🌐 点击卫星打开工具 · 🚀 点击传送门星际旅行</div>
 
   <!-- 弹出面板：点击卫星时显示，带动画过渡 -->
   <Transition name="popup">
     <div v-if="activeTool !== null" class="popup-backdrop" @click.self="closeTool">
-      <div class="popup-card">
-        <!-- 面板头部：图标 + 标题 + 关闭/返回按钮 -->
+      <div class="popup-card" :class="{ maximized }">
+        <!-- 面板头部：图标 + 标题 + 关闭按钮 -->
         <div class="popup-header">
           <span class="popup-header-icon">{{ activeTool.icon }}</span>
           <span class="popup-header-title">{{ activeTool.name }}</span>
-           <button v-if="onDevPlanet" class="popup-back-btn" @click="returnToEarth">← 返回</button>
+          <button class="popup-max-btn" @click="maximized = !maximized">{{ maximized ? '⤡' : '⛶' }}</button>
           <button class="popup-close-btn" @click="closeTool">✕</button>
         </div>
         <!-- 面板主体：动态渲染对应的工具组件 -->
@@ -24,10 +24,26 @@
     </div>
   </Transition>
 
-  <!-- 跃迁特效遮罩 -->
+  <!-- 星球选择器：多个星球时选择目标 -->
+  <Transition name="popup">
+    <div v-if="showPlanetPicker" class="popup-backdrop" @click.self="showPlanetPicker = false">
+      <div class="picker-card">
+        <div class="picker-header">
+          <span class="picker-title">🚀 选择目的地</span>
+        </div>
+        <div class="picker-list">
+          <div v-for="p in planetOptions" :key="p.id" class="picker-item" @click="jumpToPlanet(p.id)">
+            <span class="picker-item-icon">{{ p.id === 'earth' ? '🌍' : '🪐' }}</span>
+            <span class="picker-item-name">{{ p.name }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </Transition>
+
+  <!-- 跃迁特效遮罩：超光速航行 -->
   <Transition name="warp">
-    <div v-if="warpActive" class="warp-overlay">
-      <div class="warp-ring"></div>
+    <div v-if="warpActive" ref="warpContainer" class="warp-overlay">
       <div class="warp-text">{{ warpText }}</div>
     </div>
   </Transition>
@@ -35,34 +51,29 @@
 
 <script setup>
 // Vue 响应式 API 及生命周期钩子
-import { ref, computed, onMounted, onUnmounted } from 'vue';
-// Three.js 地球创建函数
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { createGlobe } from './three-globe.js';
-// 工具列表及各工具对应的 Vue 组件
 import { TOOLS, toolComponents } from './src/tools/index.js';
 import { getConfig as loadPlanetConfig, saveConfig as savePlanetConfig, resetConfig } from './src/planetConfig.js';
+import { createHyperspace } from './src/globe/hyperspace.js';
 
-// 地球容器的模板引用
 const globeRef = ref(null);
-// 当前打开的工具下标（-1 表示关闭）
 const activeIndex = ref(-1);
-// 是否在开发者星球上
-const onDevPlanet = ref(false);
-// 跃迁特效
+const maximized = ref(false);
+const showPlanetPicker = ref(false);
+const planetOptions = ref([]);
 const warpActive = ref(false);
 const warpText = ref('');
-// Three.js 场景实例引用（非响应式）
+const warpContainer = ref(null);
+let warpInstance = null;
 let globe = null;
 
-// 根据下标获取当前打开的工具定义
 const activeTool = computed(() =>
   activeIndex.value >= 0 ? TOOLS[activeIndex.value] : null
 );
-// 根据下标获取当前打开的工具组件
 const activeComponent = computed(() =>
   activeIndex.value >= 0 ? toolComponents[TOOLS[activeIndex.value].id] : null
 );
-// 给子组件传递属性
 const activeComponentProps = computed(() => {
   const tool = activeTool.value;
   if (tool && tool.id === 'planetmgr') return {
@@ -72,44 +83,50 @@ const activeComponentProps = computed(() => {
   return {};
 });
 
-// 打开工具：点击卫星时触发
 function openTool(index) {
   activeIndex.value = index;
 }
 
-// 关闭工具：点击遮罩或关闭按钮时触发
 function closeTool() {
-  if (onDevPlanet.value) { returnToEarth(); return; }
   activeIndex.value = -1;
   if (globe) globe.controls.autoRotate = true;
 }
 
-// 跃迁到开发者星球
-function portalClick() {
-  warpActive.value = true;
-  warpText.value = '🚀 星际跃迁中...';
-  setTimeout(() => { warpText.value = '🛸 穿越虫洞...'; }, 500);
-  globe.jumpTo(() => {
-    onDevPlanet.value = true;
-    warpActive.value = false;
-  }, false);
-}
-
-// 返回地球
-function returnToEarth() {
+function jumpToPlanet(targetId) {
+  showPlanetPicker.value = false;
   activeIndex.value = -1;
   warpActive.value = true;
-  warpText.value = '🛸 返回地球...';
-  setTimeout(() => { warpText.value = '🌍 即将抵达...'; }, 600);
-  globe.jumpTo(() => {
-    onDevPlanet.value = false;
+  warpText.value = '🚀 超光速航行中…';
+  setTimeout(() => { warpText.value = '🌀 曲速引擎全开…'; }, 500);
+  globe.jumpTo(targetId, () => {
     warpActive.value = false;
     if (globe) globe.controls.autoRotate = true;
-  }, true);
+  });
+}
+
+function portalClick(fromPlanetId) {
+  const others = planetConfigs.value.filter(p => p.id !== fromPlanetId);
+  if (others.length === 0) return;
+  if (others.length === 1) {
+    jumpToPlanet(others[0].id);
+  } else {
+    planetOptions.value = others;
+    showPlanetPicker.value = true;
+  }
 }
 
 // 当前星球配置
 const planetConfigs = ref(loadPlanetConfig());
+
+// 超光速航行特效生命周期
+watch(warpActive, (v) => {
+  if (v && warpContainer.value) {
+    warpInstance = createHyperspace(warpContainer.value);
+  } else if (!v && warpInstance) {
+    warpInstance.dispose();
+    warpInstance = null;
+  }
+});
 
 // 重新创建场景（当配置变化时）
 function rebuildGlobe() {
@@ -141,6 +158,7 @@ onMounted(() => {
 // 组件卸载时销毁地球场景，释放 GPU 资源
 onUnmounted(() => {
   if (globe) globe.dispose();
+  if (warpInstance) { warpInstance.dispose(); warpInstance = null; }
 });
 </script>
 
@@ -192,6 +210,12 @@ onUnmounted(() => {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  transition: width 0.3s ease, max-height 0.3s ease, border-radius 0.3s ease;
+}
+.popup-card.maximized {
+  width: min(96vw, 900px);
+  max-height: 94vh;
+  border-radius: 12px;
 }
 
 /* 面板头部：图标 + 标题 + 关闭按钮横向布局，底部有分割线 */
@@ -213,6 +237,22 @@ onUnmounted(() => {
   font-weight: 600;
   letter-spacing: 0.5px;
 }
+
+/* 最大化按钮 */
+.popup-max-btn {
+  width: 32px; height: 32px;
+  border: none;
+  background: rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.6);
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+.popup-max-btn:hover { background: rgba(255,255,255,0.12); color: #fff; }
 
 /* 关闭按钮：白色圆形，带悬停效果 */
 .popup-close-btn {
@@ -260,7 +300,7 @@ onUnmounted(() => {
   border-color: rgba(0,255,136,0.6);
 }
 
-/* 跃迁特效遮罩 */
+/* 跃迁特效遮罩：超光速航行 */
 .warp-overlay {
   position: fixed;
   inset: 0;
@@ -269,28 +309,57 @@ onUnmounted(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: rgba(0,0,0,0.85);
+  background: rgba(0,0,10,0.7);
   pointer-events: none;
 }
-.warp-ring {
-  width: 120px;
-  height: 120px;
-  border: 2px solid rgba(0,255,200,0.4);
-  border-radius: 50%;
-  animation: warpPulse 0.8s ease-in-out infinite alternate;
-  box-shadow: 0 0 40px rgba(0,255,200,0.15), inset 0 0 40px rgba(0,255,200,0.05);
-}
-@keyframes warpPulse {
-  from { transform: scale(0.8); opacity: 0.3; }
-  to { transform: scale(1.2); opacity: 0.8; }
-}
 .warp-text {
-  margin-top: 24px;
+  z-index: 1;
+  font-size: 22px;
+  font-weight: 400;
+  letter-spacing: 4px;
+  color: rgba(100,220,255,0.8);
+  text-shadow: 0 0 30px rgba(0,200,255,0.3);
+  margin-top: 40vh;
+}
+
+/* 星球选择器 */
+.picker-card {
+  width: min(80vw, 360px);
+  background: rgba(12,16,40,0.95);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(79,195,247,0.2);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 0 40px rgba(0,0,0,0.6);
+}
+.picker-header {
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  font-size: 16px;
+  font-weight: 600;
+  text-align: center;
+}
+.picker-list {
+  padding: 8px;
+}
+.picker-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.picker-item:hover {
+  background: rgba(79,195,247,0.12);
+}
+.picker-item-icon {
   font-size: 20px;
-  font-weight: 300;
-  letter-spacing: 3px;
-  color: rgba(255,255,255,0.7);
-  text-shadow: 0 0 20px rgba(0,255,200,0.2);
+}
+.picker-item-name {
+  font-size: 15px;
+  font-weight: 500;
 }
 
 /* Warp过渡动画 */
@@ -314,6 +383,13 @@ onUnmounted(() => {
     border-radius: 16px;
     margin-top: env(safe-area-inset-top, 0px);
     margin-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .popup-card.maximized {
+    width: 100vw;
+    max-height: 100vh;
+    max-height: calc(100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+    border-radius: 0;
+    margin: 0;
   }
   .popup-header { padding: 14px 16px 10px; }
   .popup-body { padding: 14px 16px 18px; }

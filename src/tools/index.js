@@ -47,7 +47,7 @@ export const TOOLS = [
   { id: 'videocall', name: '视频通话', icon: '📹', color: '#4DD0E1' },
   { id: 'devtools', name: '开发者', icon: '🛠️', color: '#FF8A65' },
   { id: 'qrcode',   name: '二维码',   icon: '📱', color: '#26C6DA' },
-  { id: 'planetmgr', name: '星球管理', icon: '🌍', color: '#00E676' },
+  { id: 'planetmgr', name: '星球管理', icon: '🌍', color: '#00E676', permanent: true },
   // 开发者子工具（独立卫星 & 独立面板）
   { id: 'json',      name: 'JSON',       icon: '🔧', color: '#4FC3F7' },
   { id: 'jsondiff',  name: 'JSON对比',   icon: '📊', color: '#BA68C8' },

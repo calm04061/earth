@@ -43,12 +43,43 @@
       <div class="pm-field" v-if="active.orbitRadius > 0">
         <label>轨道倾斜</label>
         <input type="range" min="-1.57" max="1.57" step="0.05" v-model.number="active.orbitInclination" />
-        <span class="pm-val">{{ active.orbitInclination.toFixed(2) }}</span>
+        <span class="pm-val">{{ (active.orbitInclination || 0).toFixed(2) }}</span>
       </div>
       <div class="pm-field">
         <label>线框颜色</label>
         <input type="color" v-model="active.wireframeColor" />
       </div>
+
+      <div class="pm-field pm-ring-toggle">
+        <label>大气层</label>
+        <label class="pm-switch">
+          <input type="checkbox" v-model="active.atmosphere" />
+          <span class="pm-slider"></span>
+        </label>
+      </div>
+      <div class="pm-field pm-ring-toggle">
+        <label>星环</label>
+        <label class="pm-switch">
+          <input type="checkbox" v-model="active.ringEnabled" />
+          <span class="pm-slider"></span>
+        </label>
+      </div>
+      <template v-if="active.ringEnabled">
+        <div class="pm-field">
+          <label>环颜色</label>
+          <input type="color" v-model="active.ringColor" />
+        </div>
+        <div class="pm-field">
+          <label>环大小</label>
+          <input type="range" min="1.2" max="3.0" step="0.05" v-model.number="active.ringSize" />
+          <span class="pm-val">{{ active.ringSize || 1.8 }}</span>
+        </div>
+        <div class="pm-field">
+          <label>环倾斜</label>
+          <input type="range" min="0" max="1.2" step="0.05" v-model.number="active.ringTilt" />
+          <span class="pm-val">{{ (active.ringTilt || 0).toFixed(2) }}</span>
+        </div>
+      </template>
 
       <div class="pm-field">
         <label>分配工具</label>
@@ -100,6 +131,11 @@ function addPlanet() {
     orbitInclination: (Math.random() - 0.5) * 0.8,
     orbitSpeed: 0.02 + Math.random() * 0.03,
     wireframeColor: '#4FC3F7',
+    atmosphere: true,
+    ringEnabled: false,
+    ringColor: '#a0c4ff',
+    ringSize: 1.8,
+    ringTilt: 0.3,
     tools: [],
   };
   planets.value.push(newP);

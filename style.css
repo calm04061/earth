@@ -461,9 +461,22 @@ html, body {
   font-size: 14px;
 }
 
+.note-checkbox {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: #81C784;
+  flex-shrink: 0;
+}
+
 .note-item .note-text {
   flex: 1;
   word-break: break-all;
+}
+
+.note-item.completed .note-text {
+  text-decoration: line-through;
+  opacity: 0.5;
 }
 
 .note-item .note-meta {
@@ -495,12 +508,11 @@ html, body {
   opacity: 0.5;
 }
 
+.note-item .note-edit-btn,
 .note-item .note-del {
   width: 24px;
   height: 24px;
   border: none;
-  background: rgba(255,82,82,0.15);
-  color: #FF5252;
   border-radius: 6px;
   cursor: pointer;
   font-size: 12px;
@@ -509,6 +521,19 @@ html, body {
   justify-content: center;
   transition: background 0.15s;
   flex-shrink: 0;
+}
+
+.note-item .note-edit-btn {
+  background: rgba(79,195,247,0.15);
+  color: #4FC3F7;
+}
+.note-item .note-edit-btn:hover {
+  background: rgba(79,195,247,0.3);
+}
+
+.note-item .note-del {
+  background: rgba(255,82,82,0.15);
+  color: #FF5252;
 }
 
 .note-item .note-del:hover {
@@ -1659,6 +1684,38 @@ html, body {
   transition: background 0.15s;
 }
 .pm-texture-row button:hover { background: rgba(0,230,118,0.2); }
+.pm-ring-toggle {
+  flex-direction: row !important;
+  align-items: center;
+  justify-content: space-between;
+}
+.pm-switch {
+  position: relative;
+  display: inline-block;
+  width: 40px;
+  height: 22px;
+  cursor: pointer;
+}
+.pm-switch input { opacity: 0; width: 0; height: 0; }
+.pm-slider {
+  position: absolute;
+  inset: 0;
+  background: rgba(255,255,255,0.15);
+  border-radius: 22px;
+  transition: background 0.2s;
+}
+.pm-slider::before {
+  content: '';
+  position: absolute;
+  width: 18px; height: 18px;
+  left: 2px; bottom: 2px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform 0.2s;
+}
+.pm-switch input:checked + .pm-slider { background: #00E676; }
+.pm-switch input:checked + .pm-slider::before { transform: translateX(18px); }
+
 .pm-tools-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);

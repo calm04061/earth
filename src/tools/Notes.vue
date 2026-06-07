@@ -1,14 +1,15 @@
 <template>
   <div class="tool-notes">
     <div class="notes-input-row">
-      <input v-model="inputText" placeholder="写备忘..." @keydown.enter="addNote" />
+      <input v-model="inputText" placeholder="写备忘..." @keydown.enter="saveNote" />
       <div class="notes-remind-row">
         <input type="datetime-local" v-model="remindTime" class="notes-datetime" />
-        <button class="notes-add-btn" @click="addNote">{{ remindTime ? '提醒' : '添加' }}</button>
+        <button class="notes-add-btn" @click="saveNote">{{ editingId ? '保存' : remindTime ? '提醒' : '添加' }}</button>
       </div>
     </div>
     <div class="notes-list">
-      <div v-for="(note, i) in sortedNotes" :key="note.id" class="note-item" :class="{ reminded: note.reminded }">
+      <div v-for="(note, i) in sortedNotes" :key="note.id" class="note-item" :class="{ reminded: note.reminded, completed: note.done }">
+        <input type="checkbox" class="note-checkbox" :checked="note.done" @change="toggleDone(note)" />
         <span class="note-text">{{ note.text }}</span>
         <div class="note-meta">
           <span v-if="note.remindAt && !note.reminded" class="note-remind-badge pending">
@@ -16,6 +17,7 @@
           </span>
           <span v-if="note.reminded" class="note-remind-badge done">已提醒</span>
         </div>
+        <button class="note-edit-btn" @click="startEdit(i)" title="修改">✏️</button>
         <button class="note-del" @click="removeNote(i)">✕</button>
       </div>
       <div v-if="sortedNotes.length === 0" class="notes-empty">暂无备忘</div>
@@ -31,6 +33,7 @@ const STORE = 'notes';
 const inputText = ref('');
 const remindTime = ref('');
 const notes = ref([]);
+const editingId = ref(null);
 
 async function load() {
   notes.value = await dbGetAll(STORE);
@@ -41,6 +44,7 @@ function save() {
 
 const sortedNotes = computed(() =>
   [...notes.value].sort((a, b) => {
+    if (a.done !== b.done) return a.done ? 1 : -1;
     if (a.remindAt && !a.reminded && (!b.remindAt || b.reminded)) return -1;
     if (b.remindAt && !b.reminded && (!a.remindAt || a.reminded)) return 1;
     return new Date(b.createdAt) - new Date(a.createdAt);
@@ -56,21 +60,44 @@ function formatTime(iso) {
   return `${m}/${day} ${h}:${min}`;
 }
 
-async function addNote() {
+function startEdit(i) {
+  const note = sortedNotes.value[i];
+  inputText.value = note.text;
+  remindTime.value = note.remindAt ? note.remindAt.slice(0, 16) : '';
+  editingId.value = note.id;
+}
+
+async function saveNote() {
   const v = inputText.value.trim();
   if (!v) return;
-  const note = {
-    id: Date.now(),
-    text: v,
-    createdAt: new Date().toISOString(),
-    remindAt: remindTime.value ? new Date(remindTime.value).toISOString() : null,
-    reminded: false,
-  };
-  notes.value.unshift(note);
-  await dbPut(STORE, note);
+  if (editingId.value) {
+    const idx = notes.value.findIndex(n => n.id === editingId.value);
+    if (idx !== -1) {
+      notes.value[idx].text = v;
+      notes.value[idx].remindAt = remindTime.value ? new Date(remindTime.value).toISOString() : null;
+      await dbPut(STORE, notes.value[idx]);
+    }
+  } else {
+    const note = {
+      id: Date.now(),
+      text: v,
+      createdAt: new Date().toISOString(),
+      remindAt: remindTime.value ? new Date(remindTime.value).toISOString() : null,
+      reminded: false,
+      done: false,
+    };
+    notes.value.unshift(note);
+    await dbPut(STORE, note);
+    if (note.remindAt) requestNotifyPermission();
+  }
   inputText.value = '';
   remindTime.value = '';
-  if (note.remindAt) requestNotifyPermission();
+  editingId.value = null;
+}
+
+async function toggleDone(note) {
+  note.done = !note.done;
+  await dbPut(STORE, note);
 }
 
 async function removeNote(i) {

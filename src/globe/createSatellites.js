@@ -59,7 +59,7 @@ export function createToolSatellites(scene, cfg, allTools, markerTexture, contro
         }
       });
 
-      satellites.push({ layout, startAngle, marker, dot, tether, linePos, lineGeo, label });
+      satellites.push({ layout, startAngle, marker, dot, tether, linePos, lineGeo, label, permanent: !!tool.permanent });
       satIdx++;
     }
     orbitLayoutIdx++;

@@ -4,7 +4,7 @@ import { CSS2DRenderer } from 'three/addons/renderers/CSS2DRenderer.js';
 import { getGlowTexture } from './src/globe/helpers.js';
 import { createCenterPlanet, createOrbitingPlanet } from './src/globe/createPlanet.js';
 import { createToolSatellites } from './src/globe/createSatellites.js';
-import { createPortalMarker } from './src/globe/createPortal.js';
+import { createPortalForPlanet } from './src/globe/createPortal.js';
 import { createAnimation } from './src/globe/animation.js';
 
 export function createGlobe(container, planetConfigs, allTools, onToolClick, onPortalClickCb) {
@@ -51,7 +51,6 @@ export function createGlobe(container, planetConfigs, allTools, onToolClick, onP
   backLight.position.set(-5, -3, -6);
   scene.add(backLight);
 
-  // Stars
   const starCount = 2000;
   const starGeo = new THREE.BufferGeometry();
   const starPos = new Float32Array(starCount * 3);
@@ -65,6 +64,7 @@ export function createGlobe(container, planetConfigs, allTools, onToolClick, onP
   const centerPlanetGroup = { mesh: null, satellites: [], latLonLines: [] };
   const orbitingPlanets = [];
   const toolToPlanet = {};
+  const portals = [];
   const textureLoader = new THREE.TextureLoader();
   const markerTexture = getGlowTexture();
 
@@ -75,6 +75,9 @@ export function createGlobe(container, planetConfigs, allTools, onToolClick, onP
       const cpg = createCenterPlanet(scene, cfg, textureLoader);
       centerPlanetGroup.mesh = cpg.mesh;
       centerPlanetGroup.latLonLines = cpg.latLonLines;
+      centerPlanetGroup.wireframe = cpg.wireframe;
+      centerPlanetGroup.meridians = cpg.meridians;
+      centerPlanetGroup.ring = cpg.ring;
     } else {
       const pData = createOrbitingPlanet(scene, cfg, textureLoader);
       orbitingPlanets.push(pData);
@@ -86,13 +89,28 @@ export function createGlobe(container, planetConfigs, allTools, onToolClick, onP
     } else {
       orbitingPlanets[orbitingPlanets.length - 1].satellites.push(...satellites);
     }
+
+    const portal = createPortalForPlanet(scene, controls, cfg, (planetId) => {
+      onPortalClickCb(planetId);
+    });
+    if (isCenter) {
+      portals.push({ ...portal, isCenter: true, offset: 0, planetId: cfg.id });
+    } else {
+      const pData = orbitingPlanets[orbitingPlanets.length - 1];
+      portals.push({
+        ...portal, isCenter: false, offset: Math.random() * Math.PI * 2,
+        parentData: pData, planetId: cfg.id,
+      });
+    }
   });
 
-  const { portalMarker, portalLabel } = createPortalMarker(scene, controls, onPortalClickCb);
+  orbitingPlanets.forEach(p => {
+    p.satellites.forEach(s => { s.marker.visible = false; s.dot.visible = false; s.label.visible = false; });
+  });
 
   const anim = createAnimation({
     scene, camera, renderer, labelRenderer, controls,
-    centerPlanetGroup, orbitingPlanets, portalMarker, portalLabel,
+    centerPlanetGroup, orbitingPlanets, portals,
     stars, sceneScale,
   });
 
@@ -114,6 +132,6 @@ export function createGlobe(container, planetConfigs, allTools, onToolClick, onP
       container.removeChild(labelRenderer.domElement);
     },
     jumpTo: anim.jumpTo,
-    onDevPlanet: anim.onDevPlanet,
+    currentPlanetId: anim.currentPlanetId,
   };
 }

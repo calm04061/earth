@@ -12,6 +12,11 @@ export const DEFAULT_PLANETS = [
     orbitInclination: 0,
     orbitSpeed: 0,
     wireframeColor: '#4FC3F7',
+    atmosphere: true,
+    ringEnabled: false,
+    ringColor: '#a0c4ff',
+    ringSize: 1.8,
+    ringTilt: 0.3,
     tools: ['calculator', 'weather', 'notes', 'timer', 'calendar', 'music', 'camera', 'clock', 'compass', 'drawing', 'colorpicker', 'toolbox', 'videocall', 'qrcode', 'planetmgr'],
   },
   {
@@ -25,6 +30,11 @@ export const DEFAULT_PLANETS = [
     orbitInclination: Math.PI * 0.25,
     orbitSpeed: 0.025,
     wireframeColor: '#00ff88',
+    atmosphere: true,
+    ringEnabled: false,
+    ringColor: '#00ff88',
+    ringSize: 1.2,
+    ringTilt: 0.3,
     tools: ['json', 'jsondiff', 'timestamp', 'base64', 'url', 'textdiff', 'sort', 'crontab', 'regex', 'uuid', 'hash', 'passwd', 'length'],
   },
 ];

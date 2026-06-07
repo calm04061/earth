@@ -4,47 +4,80 @@ import { getOrbitPos, easeInOutCubic } from './helpers.js';
 export function createAnimation(ctx) {
   const {
     scene, camera, renderer, labelRenderer, controls,
-    centerPlanetGroup, orbitingPlanets, portalMarker, portalLabel,
+    centerPlanetGroup, orbitingPlanets, portals,
     stars, sceneScale,
   } = ctx;
 
   let jumpAnim = null;
-  let onDevPlanet = false;
+  let currentPlanetId = 'earth';
   let mobile = false;
 
-  function targetPlanet() {
-    if (orbitingPlanets.length === 0) return null;
-    let best = orbitingPlanets[0];
-    let maxTools = 0;
-    orbitingPlanets.forEach(p => {
-      if (p.satellites.length > maxTools) { maxTools = p.satellites.length; best = p; }
-    });
-    return best;
+  function findPlanetData(id) {
+    if (id === 'earth' || !id) return { isCenter: true, data: centerPlanetGroup };
+    const p = orbitingPlanets.find(p => p.config.id === id);
+    return p ? { isCenter: false, data: p } : null;
   }
 
-  function jumpTo(onComplete, isReturn) {
+  const setSatellitesVis = (sats, v) => {
+    sats.forEach(s => { if (!s.permanent) { s.marker.visible = v; s.dot.visible = v; s.label.visible = v; } });
+  };
+  const refreshPortalVis = () => {
+    portals.forEach(p => { p.marker.visible = p.planetId === currentPlanetId; p.label.visible = p.planetId === currentPlanetId; });
+  };
+
+  function jumpTo(targetId, onComplete) {
     let endPos, endTarget;
-    if (isReturn) {
+    const prev = findPlanetData(currentPlanetId);
+
+    const showCenter = (v) => {
+      if (centerPlanetGroup.mesh) centerPlanetGroup.mesh.visible = v;
+      if (centerPlanetGroup.wireframe) centerPlanetGroup.wireframe.visible = v;
+      if (centerPlanetGroup.ring) centerPlanetGroup.ring.visible = v;
+      centerPlanetGroup.latLonLines.forEach(l => l.visible = v);
+      if (centerPlanetGroup.meridians) centerPlanetGroup.meridians.forEach(l => l.visible = v);
+      setSatellitesVis(centerPlanetGroup.satellites, v);
+    };
+
+    if (targetId === 'earth' || !targetId) {
       endPos = new THREE.Vector3(0, 0.8 * sceneScale, mobile ? 6.8 : 5.5);
       endTarget = new THREE.Vector3(0, 0, 0);
+      if (prev && !prev.isCenter) {
+        prev.data.objects.forEach(o => o.visible = false);
+        if (prev.data.label) prev.data.label.visible = false;
+        setSatellitesVis(prev.data.satellites, false);
+      }
+      showCenter(true);
+      currentPlanetId = 'earth';
+      refreshPortalVis();
     } else {
-      const target = targetPlanet();
-      if (!target) { if (onComplete) onComplete(); return; }
-      target.objects.forEach(o => o.visible = true);
-      if (target.label) target.label.visible = true;
-      target.satellites.forEach(s => { s.marker.visible = true; s.dot.visible = true; s.label.visible = true; });
-      const pos = getOrbitPos(target.config.orbitRadius, target.config.orbitInclination || 0, target.angle);
-      endPos = pos.clone().add(new THREE.Vector3(0, 0.4, 2.0));
+      const target = findPlanetData(targetId);
+      if (!target || target.isCenter) { if (onComplete) onComplete(); return; }
+      const pData = target.data;
+      pData.objects.forEach(o => o.visible = true);
+      if (pData.label) pData.label.visible = true;
+      pData.satellites.forEach(s => { s.marker.visible = true; s.dot.visible = true; s.label.visible = true; });
+      const pos = getOrbitPos(pData.config.orbitRadius, pData.config.orbitInclination || 0, pData.angle);
+      const camDist = (pData.config.radius || 0.55) * 3 + 1.5;
+      endPos = pos.clone().add(new THREE.Vector3(0, camDist * 0.2, camDist));
       endTarget = pos.clone();
+
+      if (prev && !prev.isCenter && prev.data !== pData) {
+        prev.data.objects.forEach(o => o.visible = false);
+        if (prev.data.label) prev.data.label.visible = false;
+        setSatellitesVis(prev.data.satellites, false);
+      }
+      showCenter(false);
+      currentPlanetId = targetId;
+      refreshPortalVis();
     }
+
     jumpAnim = {
       startTime: performance.now(), duration: 1600,
       startPos: camera.position.clone(), endPos,
       startTarget: controls.target.clone(), endTarget,
-      onComplete, isReturn,
+      onComplete,
     };
     controls.enabled = false;
-    onDevPlanet = !isReturn;
   }
 
   let animId = null;
@@ -59,23 +92,16 @@ export function createAnimation(ctx) {
       const ease = easeInOutCubic(progress);
       camera.position.lerpVectors(jumpAnim.startPos, jumpAnim.endPos, ease);
       controls.target.lerpVectors(jumpAnim.startTarget, jumpAnim.endTarget, ease);
-      controls.update();
       if (progress >= 1) {
         const cb = jumpAnim.onComplete;
-        const wasReturn = jumpAnim.isReturn;
         jumpAnim = null;
-        if (wasReturn) {
-          orbitingPlanets.forEach(p => {
-            p.objects.forEach(o => o.visible = false);
-            if (p.label) p.label.visible = false;
-            p.satellites.forEach(s => { s.marker.visible = false; s.dot.visible = false; s.label.visible = false; });
-          });
-        }
         controls.enabled = true;
         if (cb) cb();
       }
-    } else {
       controls.update();
+      renderer.render(scene, camera);
+      labelRenderer.render(scene, camera);
+      return;
     }
 
     orbitingPlanets.forEach((p) => {
@@ -100,6 +126,11 @@ export function createAnimation(ctx) {
           attr.array[i * 3 + 2] = dp.z;
         }
         attr.needsUpdate = true;
+      }
+
+      // Follow current planet
+      if (p.config.id === currentPlanetId) {
+        controls.target.copy(pos);
       }
 
       p.satellites.forEach((sat) => {
@@ -149,28 +180,44 @@ export function createAnimation(ctx) {
       sat.marker.scale.set(pulse * 0.35, pulse * 0.35, 1);
     });
 
-    const portalAngle = t * 0.06;
-    const pLat = 0.3;
-    const R = centerPlanetGroup.mesh ? centerPlanetGroup.mesh.geometry.parameters.radius : 1.3;
-    const px = Math.cos(pLat) * Math.cos(portalAngle) * R * 1.05;
-    const py = Math.sin(pLat) * R * 1.05;
-    const pz = Math.cos(pLat) * Math.sin(portalAngle) * R * 1.05;
-    portalMarker.position.set(px, py, pz);
-    portalLabel.position.set(px * 1.3, py * 1.3 + 0.2, pz * 1.3);
-    portalMarker.scale.set(0.6 * (1 + Math.sin(t * 1.2) * 0.1), 0.6 * (1 + Math.sin(t * 1.2) * 0.1), 1);
+    // Animate portals
+    portals.forEach((p) => {
+      const angle = t * 0.06 + p.offset;
+      const lat = 0.3;
+      if (p.isCenter) {
+        const R = centerPlanetGroup.mesh ? centerPlanetGroup.mesh.geometry.parameters.radius : 1.3;
+        const px = Math.cos(lat) * Math.cos(angle) * R * 1.05;
+        const py = Math.sin(lat) * R * 1.05;
+        const pz = Math.cos(lat) * Math.sin(angle) * R * 1.05;
+        p.marker.position.set(px, py, pz);
+        p.label.position.set(px * 1.3, py * 1.3 + 0.2, pz * 1.3);
+      } else {
+      const R = p.parentData.config.radius || 0.5;
+      const planetPos = p.parentData.mesh.position.clone();
+        const lpx = Math.cos(lat) * Math.cos(angle) * R * 1.3;
+        const lpy = Math.sin(lat) * R * 1.3;
+        const lpz = Math.cos(lat) * Math.sin(angle) * R * 1.3;
+        p.marker.position.set(planetPos.x + lpx, planetPos.y + lpy, planetPos.z + lpz);
+        p.label.position.set(planetPos.x + lpx * 1.3, planetPos.y + lpy * 1.3 + 0.15, planetPos.z + lpz * 1.3);
+      }
+      const pulse = 1 + Math.sin(t * 1.2 + p.offset) * 0.1;
+      p.marker.scale.set(0.6 * pulse, 0.6 * pulse, 1);
+    });
 
     stars.rotation.y += 0.0002;
+    controls.update();
     renderer.render(scene, camera);
     labelRenderer.render(scene, camera);
   }
 
+  refreshPortalVis();
   animate();
 
   function onResize(w, h) {
     mobile = w < 600;
     camera.fov = mobile ? 46 : 40;
     camera.aspect = w / h;
-    if (!onDevPlanet) {
+    if (currentPlanetId === 'earth') {
       camera.position.set(0, 0.8, mobile ? 6.8 : 5.5);
       controls.target.set(0, 0, 0);
     }
@@ -181,7 +228,7 @@ export function createAnimation(ctx) {
 
   return {
     jumpTo,
-    onDevPlanet: () => onDevPlanet,
+    currentPlanetId: () => currentPlanetId,
     onResize,
     controls,
     cancelFrame() { cancelAnimationFrame(animId); },

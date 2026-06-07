@@ -6,3 +6,4 @@ screenshot.mjs
 .vite
 screenshot-*.png
 chrome-extension.zip
+verify.mjs

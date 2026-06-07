@@ -377,6 +377,7 @@ async function loadByCoords(lat, lon) {
   try {
     const name = await reverseGeocode(lat, lon);
     cityName.value = name;
+    cityQuery.value = name;
     const data = await fetchWeather(lat, lon);
     const wmo = data.current.weather_code;
     const ui = wmoToUI(wmo);

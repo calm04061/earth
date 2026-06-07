@@ -330,11 +330,11 @@ html, body {
 
 .notes-input-row {
   display: flex;
-  gap: 8px;
+  flex-direction: column;
+  gap: 6px;
 }
 
-.notes-input-row input {
-  flex: 1;
+.notes-input-row > input {
   padding: 10px 14px;
   border: 1px solid rgba(255,255,255,0.1);
   border-radius: 10px;
@@ -343,14 +343,38 @@ html, body {
   font-size: 14px;
   outline: none;
   transition: border-color 0.2s;
+  width: 100%;
+  box-sizing: border-box;
 }
 
-.notes-input-row input:focus {
+.notes-input-row > input:focus {
   border-color: rgba(79, 195, 247, 0.5);
 }
 
-.notes-input-row input::placeholder {
+.notes-input-row > input::placeholder {
   color: rgba(255,255,255,0.25);
+}
+
+.notes-remind-row {
+  display: flex;
+  gap: 6px;
+}
+
+.notes-datetime {
+  flex: 1;
+  padding: 8px 10px;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.05);
+  color: rgba(255,255,255,0.7);
+  font-size: 12px;
+  outline: none;
+  box-sizing: border-box;
+  color-scheme: dark;
+}
+
+.notes-datetime:focus {
+  border-color: rgba(79, 195, 247, 0.5);
 }
 
 .notes-add-btn {
@@ -399,6 +423,35 @@ html, body {
 .note-item .note-text {
   flex: 1;
   word-break: break-all;
+}
+
+.note-item .note-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.note-remind-badge {
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.note-remind-badge.pending {
+  background: rgba(79, 195, 247, 0.15);
+  color: #4FC3F7;
+}
+
+.note-remind-badge.done {
+  background: rgba(129, 199, 132, 0.15);
+  color: #81C784;
+}
+
+.note-item.reminded {
+  opacity: 0.5;
 }
 
 .note-item .note-del {
@@ -577,6 +630,53 @@ html, body {
   background: rgba(79, 195, 247, 0.2);
   color: #4FC3F7;
   font-weight: 600;
+}
+
+.calendar-day.has-reminder::after {
+  content: '';
+  display: block;
+  width: 4px;
+  height: 4px;
+  background: #FFB74D;
+  border-radius: 50%;
+  margin: 1px auto 0;
+}
+
+.calendar-day.selected {
+  outline: 2px solid rgba(79, 195, 247, 0.5);
+  outline-offset: -2px;
+}
+
+.calendar-detail {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  text-align: left;
+}
+
+.calendar-detail-title {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: rgba(255,255,255,0.6);
+}
+
+.calendar-detail-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 10px;
+  background: rgba(255,255,255,0.04);
+  border-radius: 8px;
+  margin-bottom: 4px;
+  font-size: 13px;
+}
+
+.calendar-detail-time {
+  font-size: 11px;
+  color: #4FC3F7;
+  flex-shrink: 0;
+  margin-left: 8px;
 }
 
 /* ── Tool: Music ── */
@@ -998,11 +1098,44 @@ html, body {
   margin-bottom: 12px;
 }
 
-.camera-viewfinder video, .camera-viewfinder canvas {
+.camera-viewfinder video {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
+  transform: scaleX(-1);
+}
+
+.camera-viewfinder .camera-preview-wrap {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+  cursor: grab;
+}
+
+.camera-preview-wrap:active { cursor: grabbing; }
+
+.camera-preview-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  transform-origin: center center;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.camera-zoom-info {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  background: rgba(0,0,0,0.55);
+  color: #fff;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  pointer-events: none;
 }
 
 .camera-viewfinder .placeholder {
@@ -1066,6 +1199,278 @@ html, body {
 }
 
 .camera-btn:hover { background: rgba(255,255,255,0.15); color: #fff; }
+
+/* ── Tool: Video Call ── */
+.tool-videocall {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.videocall-connect {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 24px 0;
+}
+
+.videocall-input-row {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.videocall-input-row input {
+  flex: 1;
+  padding: 10px 14px;
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.06);
+  color: #fff;
+  font-size: 15px;
+  outline: none;
+}
+
+.videocall-input-row input:focus {
+  border-color: #4FC3F7;
+}
+
+.videocall-input-row button {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  background: #0d6efd;
+  color: #fff;
+  cursor: pointer;
+  font-size: 15px;
+}
+
+.videocall-hint {
+  font-size: 12px;
+  color: rgba(255,255,255,0.4);
+}
+
+.videocall-room {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.videocall-videos {
+  display: grid;
+  grid-template-rows: 1fr auto;
+  gap: 6px;
+}
+
+.videocall-video-wrap {
+  position: relative;
+  background: rgba(0,0,0,0.4);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.videocall-video-wrap.remote {
+  aspect-ratio: 4/3;
+}
+
+.videocall-video-wrap.local {
+  width: 120px;
+  aspect-ratio: 4/3;
+  border: 2px solid rgba(255,255,255,0.15);
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  border-radius: 8px;
+}
+
+.videocall-video-wrap video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.videocall-waiting {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255,255,255,0.4);
+  font-size: 14px;
+}
+
+.videocall-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+
+.videocall-room-id {
+  font-size: 12px;
+  color: rgba(255,255,255,0.3);
+}
+
+/* ── Tool: Developer Tools ── */
+.tool-devtools {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.devtools-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.devtools-tab {
+  padding: 6px 12px;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 6px;
+  background: transparent;
+  color: rgba(255,255,255,0.5);
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.15s;
+}
+
+.devtools-tab:hover { border-color: rgba(79,195,247,0.3); color: #fff; }
+.devtools-tab.active { background: rgba(79,195,247,0.2); border-color: #4FC3F7; color: #4FC3F7; }
+
+.devtools-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.devtools-pane { display: flex; flex-direction: column; gap: 8px; }
+
+.devtools-textarea {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  background: rgba(0,0,0,0.3);
+  color: #fff;
+  font-size: 13px;
+  font-family: 'Courier New', monospace;
+  resize: vertical;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.devtools-textarea:focus { border-color: rgba(79,195,247,0.5); }
+
+.devtools-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.devtools-actions button {
+  padding: 6px 14px;
+  border: none;
+  border-radius: 6px;
+  background: rgba(79,195,247,0.15);
+  color: #4FC3F7;
+  cursor: pointer;
+  font-size: 12px;
+  transition: background 0.15s;
+}
+
+.devtools-actions button:hover { background: rgba(79,195,247,0.3); }
+
+.devtools-pre {
+  background: rgba(0,0,0,0.3);
+  border-radius: 8px;
+  padding: 10px;
+  font-size: 12px;
+  font-family: 'Courier New', monospace;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 200px;
+  overflow: auto;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+
+.devtools-error {
+  color: #FF5252;
+  font-size: 12px;
+  padding: 6px 10px;
+  background: rgba(255,82,82,0.1);
+  border-radius: 6px;
+}
+
+.devtools-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.devtools-field label {
+  font-size: 12px;
+  color: rgba(255,255,255,0.5);
+}
+
+.devtools-field input {
+  padding: 8px 10px;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 6px;
+  background: rgba(0,0,0,0.3);
+  color: #fff;
+  font-size: 13px;
+  outline: none;
+  font-family: 'Courier New', monospace;
+}
+
+.devtools-field input:focus { border-color: rgba(79,195,247,0.5); }
+.devtools-field input[readonly] { opacity: 0.6; cursor: default; }
+
+.devtools-select {
+  padding: 8px 10px;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 6px;
+  background: rgba(0,0,0,0.3);
+  color: #fff;
+  font-size: 13px;
+  outline: none;
+}
+
+.devtools-select:focus { border-color: rgba(79,195,247,0.5); }
+
+.devtools-len-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+
+.devtools-len-val { color: #4FC3F7; font-weight: 600; }
+.devtools-len-unit { color: rgba(255,255,255,0.5); }
+
+.devtools-cron-example {
+  display: flex;
+  gap: 8px;
+  padding: 5px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: background 0.15s;
+}
+
+.devtools-cron-example:hover { background: rgba(255,255,255,0.05); }
+
+.devtools-cron-example code {
+  color: #4FC3F7;
+  min-width: 100px;
+}
+
+.devtools-cron-example span {
+  color: rgba(255,255,255,0.5);
+}
 
 /* ── Tool: QR Code ── */
 .tool-qrcode {
@@ -1246,4 +1651,9 @@ html, body {
   .camera-capture-btn::after { width: 30px; height: 30px; }
 
   .note-item { padding: 8px 10px; font-size: 12px; }
+
+  .devtools-tabs { gap: 4px; }
+  .devtools-tab { padding: 5px 8px; font-size: 11px; }
+  .devtools-textarea { font-size: 12px; }
 }
+

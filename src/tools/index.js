@@ -11,6 +11,9 @@ import Compass from './Compass.vue';
 import DrawingBoard from './DrawingBoard.vue';
 import ColorPicker from './ColorPicker.vue';
 import Toolbox from './Toolbox.vue';
+import VideoCall from './VideoCall.vue';
+import DeveloperTools from './DeveloperTools.vue';
+import QRCode from './QRCode.vue';
 
 // 工具定义列表：ID、名称、图标、主题色（用于卫星标记颜色）
 export const TOOLS = [
@@ -26,6 +29,9 @@ export const TOOLS = [
   { id: 'drawing',   name: '画板',   icon: '🎨', color: '#FFB74D' },
   { id: 'colorpicker', name: '颜色', icon: '🎯', color: '#E57373' },
   { id: 'toolbox',   name: '工具箱', icon: '🔧', color: '#A1887F' },
+  { id: 'videocall', name: '视频通话', icon: '📹', color: '#4DD0E1' },
+  { id: 'devtools', name: '开发者', icon: '🛠️', color: '#FF8A65' },
+  { id: 'qrcode',   name: '二维码', icon: '📱', color: '#26C6DA' },
 ];
 
 // 工具 ID 到 Vue 组件的映射表
@@ -42,4 +48,7 @@ export const toolComponents = {
   drawing: DrawingBoard,
   colorpicker: ColorPicker,
   toolbox: Toolbox,
+  videocall: VideoCall,
+  devtools: DeveloperTools,
+  qrcode: QRCode,
 };

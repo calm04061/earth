@@ -2,7 +2,22 @@
   <div class="tool-camera">
     <div class="camera-viewfinder" ref="viewRef">
       <video v-show="streaming && !capturedImg" ref="videoRef" autoplay playsinline></video>
-      <img v-show="capturedImg" :src="capturedImg" alt="captured" />
+      <div v-show="capturedImg" class="camera-preview-wrap"
+        ref="previewWrap"
+        @wheel.prevent="onWheel"
+        @mousedown="onDragStart"
+        @mousemove="onDragMove"
+        @mouseup="onDragEnd"
+        @mouseleave="onDragEnd"
+        @touchstart.prevent="onTouchStart"
+        @touchmove.prevent="onTouchMove"
+        @touchend="onTouchEnd"
+        @dblclick="resetZoom"
+      >
+        <img ref="previewImg" :src="capturedImg" alt="captured"
+          :style="{ transform: `scale(${zoom}) translate(${panX}px, ${panY}px)` }" />
+        <div class="camera-zoom-info">{{ Math.round(zoom * 100) }}%</div>
+      </div>
       <div v-if="!streaming && !capturedImg && !error" class="placeholder">
         <div class="icon">📷</div><span>正在启动相机...</span>
       </div>
@@ -27,11 +42,98 @@ import { ref, onMounted, onUnmounted, nextTick } from 'vue';
 
 const viewRef = ref(null);
 const videoRef = ref(null);
+const previewWrap = ref(null);
+const previewImg = ref(null);
 const streaming = ref(false);
 const capturedImg = ref('');
 const error = ref('');
 
 let stream = null;
+let zoom = 1;
+let panX = 0, panY = 0;
+let dragging = false, dragStartX, dragStartY, panStartX, panStartY;
+let lastTouchDist = 0;
+
+function applyTransform() {
+  if (!previewImg.value) return;
+  previewImg.value.style.transform = `scaleX(-1) scale(${zoom}) translate(${panX}px, ${panY}px)`;
+}
+
+function onWheel(e) {
+  const delta = e.deltaY > 0 ? -0.1 : 0.1;
+  zoom = Math.max(1, Math.min(5, zoom + delta));
+  applyTransform();
+}
+
+function onDragStart(e) {
+  if (zoom <= 1) return;
+  dragging = true;
+  dragStartX = e.clientX;
+  dragStartY = e.clientY;
+  panStartX = panX;
+  panStartY = panY;
+}
+
+function onDragMove(e) {
+  if (!dragging) return;
+  panX = panStartX + (e.clientX - dragStartX);
+  panY = panStartY + (e.clientY - dragStartY);
+  applyTransform();
+}
+
+function onDragEnd() {
+  dragging = false;
+}
+
+let touchIds = [];
+function onTouchStart(e) {
+  touchIds = e.touches;
+  if (touchIds.length === 1 && zoom > 1) {
+    const t = touchIds[0];
+    dragging = true;
+    dragStartX = t.clientX;
+    dragStartY = t.clientY;
+    panStartX = panX;
+    panStartY = panY;
+  } else if (touchIds.length === 2) {
+    dragging = false;
+    lastTouchDist = Math.hypot(
+      touchIds[0].clientX - touchIds[1].clientX,
+      touchIds[0].clientY - touchIds[1].clientY
+    );
+  }
+}
+
+function onTouchMove(e) {
+  if (e.touches.length === 1 && dragging) {
+    const t = e.touches[0];
+    panX = panStartX + (t.clientX - dragStartX);
+    panY = panStartY + (t.clientY - dragStartY);
+    applyTransform();
+  } else if (e.touches.length === 2) {
+    const dist = Math.hypot(
+      e.touches[0].clientX - e.touches[1].clientX,
+      e.touches[0].clientY - e.touches[1].clientY
+    );
+    if (lastTouchDist) {
+      zoom = Math.max(1, Math.min(5, zoom * (dist / lastTouchDist)));
+      applyTransform();
+    }
+    lastTouchDist = dist;
+  }
+}
+
+function onTouchEnd() {
+  dragging = false;
+  lastTouchDist = 0;
+}
+
+function resetZoom() {
+  zoom = 1;
+  panX = 0;
+  panY = 0;
+  applyTransform();
+}
 
 async function startCamera() {
   try {
@@ -73,6 +175,7 @@ function capture() {
   const ctx = canvas.getContext('2d');
   ctx.drawImage(video, 0, 0);
   capturedImg.value = canvas.toDataURL('image/jpeg', 0.85);
+  resetZoom();
 
   const flash = document.createElement('div');
   flash.style.cssText = 'position:absolute;inset:0;background:#fff;z-index:10;border-radius:12px;';
@@ -82,6 +185,7 @@ function capture() {
 
 function retake() {
   capturedImg.value = '';
+  resetZoom();
   startCamera();
 }
 

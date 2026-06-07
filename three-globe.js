@@ -3,10 +3,10 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 
 const ORBITS = [
-  { inclination: 0, radius: 2.8, speed: 0.12, count: 3, color: 0x4FC3F7 },
-  { inclination: Math.PI * 0.4, radius: 3.2, speed: 0.08, count: 3, color: 0xBA68C8 },
-  { inclination: Math.PI * 0.85, radius: 3.0, speed: 0.15, count: 3, color: 0xFFB74D },
-  { inclination: -Math.PI * 0.32, radius: 3.4, speed: 0.1, count: 3, color: 0x81C784 },
+  { inclination: 0, radius: 2.8, speed: 0.12, count: 4, color: 0x4FC3F7 },
+  { inclination: Math.PI * 0.4, radius: 3.2, speed: 0.08, count: 4, color: 0xBA68C8 },
+  { inclination: Math.PI * 0.85, radius: 3.0, speed: 0.15, count: 4, color: 0xFFB74D },
+  { inclination: -Math.PI * 0.32, radius: 3.4, speed: 0.1, count: 4, color: 0x81C784 },
 ];
 
 function getOrbitPos(radius, inclination, theta) {

@@ -5,4 +5,7 @@ import vue from '@vitejs/plugin-vue';
 export default defineConfig({
   plugins: [vue()],      // Vue 3 SFC 支持
   base: '/earth/',       // GitHub Pages 部署子路径
+  server: { 
+    allowedHosts: true
+  }
 });

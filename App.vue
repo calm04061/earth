@@ -129,25 +129,30 @@ watch(warpActive, (v) => {
 });
 
 // 重新创建场景（当配置变化时）
-function rebuildGlobe() {
+function rebuildGlobe(currentPlanet) {
   if (globe) { globe.dispose(); globe = null; }
   if (globeRef.value) {
     globe = createGlobe(globeRef.value, planetConfigs.value, TOOLS, openTool, portalClick);
+    if (currentPlanet && currentPlanet !== 'earth') {
+      globe.jumpTo(currentPlanet);
+    }
   }
 }
 
 // 保存配置
 function onSavePlanetConfig(newConfig) {
+  const currentId = globe ? globe.currentPlanetId() : 'earth';
   savePlanetConfig(newConfig);
   planetConfigs.value = newConfig;
-  rebuildGlobe();
+  rebuildGlobe(currentId);
 }
 
 // 重置配置
 function onResetPlanetConfig() {
+  const currentId = globe ? globe.currentPlanetId() : 'earth';
   const def = resetConfig();
   planetConfigs.value = def;
-  rebuildGlobe();
+  rebuildGlobe(currentId);
 }
 
 // 组件挂载后创建 3D 地球场景

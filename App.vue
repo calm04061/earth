@@ -3,7 +3,7 @@
   <div ref="globeRef" class="globe-container"></div>
 
   <!-- 底部提示文字 -->
-  <div class="info-text">{{ onDevPlanet ? '🛠️ 开发者星球 · 点击返回地球' : '🌐 探索工具集 · 点击卫星打开' }}</div>
+  <div class="info-text">{{ onDevPlanet ? '🛠️ 开发者星球 · 点击卫星打开工具' : '🌐 探索工具集 · 点击卫星打开' }}</div>
 
   <!-- 弹出面板：点击卫星时显示，带动画过渡 -->
   <Transition name="popup">
@@ -13,12 +13,12 @@
         <div class="popup-header">
           <span class="popup-header-icon">{{ activeTool.icon }}</span>
           <span class="popup-header-title">{{ activeTool.name }}</span>
-          <button v-if="onDevPlanet && activeTool?.id === 'devtools'" class="popup-back-btn" @click="returnToEarth">← 返回</button>
+           <button v-if="onDevPlanet" class="popup-back-btn" @click="returnToEarth">← 返回</button>
           <button class="popup-close-btn" @click="closeTool">✕</button>
         </div>
         <!-- 面板主体：动态渲染对应的工具组件 -->
         <div class="popup-body">
-          <component :is="activeComponent" />
+          <component :is="activeComponent" v-bind="activeComponentProps" />
         </div>
       </div>
     </div>
@@ -40,6 +40,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { createGlobe } from './three-globe.js';
 // 工具列表及各工具对应的 Vue 组件
 import { TOOLS, toolComponents } from './src/tools/index.js';
+import { getConfig as loadPlanetConfig, saveConfig as savePlanetConfig, resetConfig } from './src/planetConfig.js';
 
 // 地球容器的模板引用
 const globeRef = ref(null);
@@ -61,6 +62,15 @@ const activeTool = computed(() =>
 const activeComponent = computed(() =>
   activeIndex.value >= 0 ? toolComponents[TOOLS[activeIndex.value].id] : null
 );
+// 给子组件传递属性
+const activeComponentProps = computed(() => {
+  const tool = activeTool.value;
+  if (tool && tool.id === 'planetmgr') return {
+    modelValue: planetConfigs.value,
+    'onUpdate:modelValue': onSavePlanetConfig,
+  };
+  return {};
+});
 
 // 打开工具：点击卫星时触发
 function openTool(index) {
@@ -82,8 +92,6 @@ function portalClick() {
   globe.jumpTo(() => {
     onDevPlanet.value = true;
     warpActive.value = false;
-    // 打开开发者工具
-    openTool(TOOLS.findIndex(t => t.id === 'devtools'));
   }, false);
 }
 
@@ -100,11 +108,34 @@ function returnToEarth() {
   }, true);
 }
 
+// 当前星球配置
+const planetConfigs = ref(loadPlanetConfig());
+
+// 重新创建场景（当配置变化时）
+function rebuildGlobe() {
+  if (globe) { globe.dispose(); globe = null; }
+  if (globeRef.value) {
+    globe = createGlobe(globeRef.value, planetConfigs.value, TOOLS, openTool, portalClick);
+  }
+}
+
+// 保存配置
+function onSavePlanetConfig(newConfig) {
+  savePlanetConfig(newConfig);
+  planetConfigs.value = newConfig;
+  rebuildGlobe();
+}
+
+// 重置配置
+function onResetPlanetConfig() {
+  const def = resetConfig();
+  planetConfigs.value = def;
+  rebuildGlobe();
+}
+
 // 组件挂载后创建 3D 地球场景
 onMounted(() => {
-  if (globeRef.value) {
-    globe = createGlobe(globeRef.value, TOOLS, openTool, portalClick);
-  }
+  rebuildGlobe();
 });
 
 // 组件卸载时销毁地球场景，释放 GPU 资源

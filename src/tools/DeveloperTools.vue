@@ -25,6 +25,11 @@
 
 <script setup>
 import { ref } from 'vue';
+
+const props = defineProps({
+  initialTab: { type: String, default: 'json' },
+});
+
 import JsonFormat from './devtools/JsonFormat.vue';
 import JsonDiff from './devtools/JsonDiff.vue';
 import Timestamp from './devtools/Timestamp.vue';
@@ -54,5 +59,5 @@ const tabs = [
   { id: 'passwd', label: '密码' },
   { id: 'length', label: '长度' },
 ];
-const activeTab = ref('json');
+const activeTab = ref(props.initialTab);
 </script>

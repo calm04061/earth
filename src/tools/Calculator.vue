@@ -7,6 +7,23 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue';
 import * as THREE from 'three';
+let wasmReady = false;
+let evalFn = null;
+
+(async () => {
+  try {
+    const wasm = await import('../../calc-wasm/pkg-web/calc_wasm.js');
+    await wasm.default();
+    evalFn = wasm.eval_expression;
+  } catch (e) {
+    console.warn('WASM init failed, falling back to JS eval', e);
+    evalFn = (expr) => {
+      try { return String(Function('"use strict";return (' + expr + ')')()); }
+      catch { return 'Error'; }
+    };
+  }
+  wasmReady = true;
+})();
 
 const sceneRef = ref(null);
 
@@ -207,10 +224,10 @@ function calcInput(val) {
   if (val === 'clear') {
     expr = ''; displayText = '0';
   } else if (val === '=') {
-    try {
-      const r = Function('"use strict";return (' + expr + ')')();
-      expr = String(r); displayText = expr;
-    } catch { displayText = 'Error'; expr = ''; }
+    if (!wasmReady) { displayText = 'WASM加载中'; return; }
+    const r = evalFn(expr);
+    displayText = r;
+    if (r !== 'Error') expr = r; else expr = '';
   } else {
     if (displayText === '0' && !'+-*/'.includes(val) && val !== '.') expr = '';
     if (val === '.' && /\.\d*$/.test(expr)) return;

@@ -1,5 +1,6 @@
 node_modules
 dist
+target
 chrome-dist
 screenshots/
 screenshot.mjs

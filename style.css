@@ -75,6 +75,31 @@ html, body {
   transform: scale(0.95);
 }
 
+/* ── Dev planet label ── */
+.dev-planet-label {
+  pointer-events: none !important;
+  background: rgba(0,40,20,0.5) !important;
+  border-color: rgba(0,255,136,0.25) !important;
+}
+.dev-planet-label:hover {
+  transform: none !important;
+  background: rgba(0,40,20,0.5) !important;
+  border-color: rgba(0,255,136,0.25) !important;
+  box-shadow: none !important;
+}
+
+/* ── Portal label ── */
+.portal-label {
+  background: rgba(0,30,40,0.6) !important;
+  border-color: rgba(0,255,200,0.4) !important;
+  box-shadow: 0 0 20px rgba(0,255,200,0.12) !important;
+}
+.portal-label:hover {
+  background: rgba(0,255,200,0.2) !important;
+  border-color: rgba(0,255,200,0.8) !important;
+  box-shadow: 0 0 30px rgba(0,255,200,0.3) !important;
+}
+
 /* ── Info text ── */
 #info {
   position: fixed;

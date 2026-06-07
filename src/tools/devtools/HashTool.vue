@@ -7,8 +7,13 @@
       <button @click="calc('SHA-384')">SHA384</button>
       <button @click="calc('SHA-512')">SHA512</button>
     </div>
+    <div class="devtools-actions">
+      <input type="file" ref="fileInput" @change="onFile" multiple style="display:none" />
+      <button @click="$refs.fileInput.click()">选择文件</button>
+      <span v-if="fileName" style="font-size:11px;color:rgba(255,255,255,0.5);margin-left:6px;">{{ fileName }}</span>
+    </div>
     <div v-for="r in results" :key="r.alg" class="devtools-pre" style="margin-bottom:4px;">
-      <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-bottom:2px;">{{ r.alg }}</div>
+      <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-bottom:2px;">{{ r.alg }}<span v-if="r.source" style="margin-left:6px;color:rgba(255,255,255,0.25);font-size:10px;">{{ r.source }}</span></div>
       <div style="word-break:break-all;font-size:11px;cursor:pointer;" @click="copy(r.val)">{{ r.val }}</div>
     </div>
   </div>
@@ -16,13 +21,28 @@
 <script setup>
 import { ref } from 'vue';
 const input = ref(''); const results = ref([]);
+const fileInput = ref(null); const fileName = ref('');
 async function calc(alg) {
   if (!input.value) return;
   const enc = new TextEncoder();
   const buf = await crypto.subtle.digest(alg, enc.encode(input.value));
   const hex = Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
   const existing = results.value.find(r => r.alg === alg);
-  if (existing) existing.val = hex; else results.value.push({ alg, val: hex });
+  if (existing) existing.val = hex; else results.value.push({ alg, val: hex, source: '' });
+}
+async function onFile(e) {
+  const files = e.target.files;
+  if (!files.length) return;
+  fileName.value = Array.from(files).map(f => f.name).join(', ');
+  for (const file of files) {
+    const buf = await file.arrayBuffer();
+    for (const alg of ['SHA-1', 'SHA-256', 'SHA-384', 'SHA-512']) {
+      const hash = await crypto.subtle.digest(alg, buf);
+      const hex = Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+      results.value.push({ alg, val: hex, source: file.name });
+    }
+  }
+  fileInput.value.value = '';
 }
 function copy(v) { if (v) navigator.clipboard?.writeText(v); }
 </script>

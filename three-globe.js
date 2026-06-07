@@ -17,7 +17,7 @@ function getOrbitPos(radius, inclination, theta) {
   );
 }
 
-export function createGlobe(container, tools, onToolClick) {
+export function createGlobe(container, tools, onToolClick, onPortalClickCb) {
   const RADIUS = 1.3;
   let w = container.clientWidth;
   let h = container.clientHeight;
@@ -190,6 +190,8 @@ export function createGlobe(container, tools, onToolClick) {
 
     // Satellites
     for (let i = 0; i < orbit.count; i++) {
+      // 跳过 devtools，它在开发者星球上
+      while (toolIdx < tools.length && tools[toolIdx].id === 'devtools') toolIdx++;
       if (toolIdx >= tools.length) break;
       const tool = tools[toolIdx];
       const startAngle = (i / orbit.count) * Math.PI * 2 + 0.3;
@@ -238,14 +240,200 @@ export function createGlobe(container, tools, onToolClick) {
     }
   });
 
+  // ─── Dev Planet ───
+  const DEV_INCLINATION = Math.PI * 0.25;
+  const DEV_RADIUS = 4.8;
+  const DEV_SPEED = 0.025;
+  const DEV_PLANET_R = 0.55;
+  let devAngle = 0.7;
+
+  // Dev planet sphere
+  const devGeo = new THREE.SphereGeometry(DEV_PLANET_R, 32, 32);
+  const devMat = new THREE.MeshPhysicalMaterial({
+    color: 0x0a2a1a, emissive: 0x00ff88, emissiveIntensity: 0.15,
+    metalness: 0.2, roughness: 0.3, transparent: true, opacity: 0.92,
+  });
+  const devMesh = new THREE.Mesh(devGeo, devMat);
+  devMesh.castShadow = true;
+  scene.add(devMesh);
+
+  // Dev planet wireframe (hex-like)
+  const devWireGeo = new THREE.SphereGeometry(DEV_PLANET_R * 1.008, 20, 12);
+  const devWireMat = new THREE.MeshBasicMaterial({
+    color: 0x00ff88, wireframe: true, transparent: true, opacity: 0.15,
+  });
+  const devWire = new THREE.Mesh(devWireGeo, devWireMat);
+  scene.add(devWire);
+
+  // Dev planet glow aura
+  const devGlowCanvas = document.createElement('canvas');
+  devGlowCanvas.width = 128; devGlowCanvas.height = 128;
+  const dCtx = devGlowCanvas.getContext('2d');
+  const dGrad = dCtx.createRadialGradient(64, 64, 0, 64, 64, 64);
+  dGrad.addColorStop(0, 'rgba(0,255,136,0.3)');
+  dGrad.addColorStop(0.4, 'rgba(0,255,136,0.1)');
+  dGrad.addColorStop(1, 'rgba(0,255,136,0)');
+  dCtx.fillStyle = dGrad; dCtx.fillRect(0, 0, 128, 128);
+  const devGlowTex = new THREE.CanvasTexture(devGlowCanvas);
+  const devGlow = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: devGlowTex, blending: THREE.AdditiveBlending, transparent: true, opacity: 0.6,
+  }));
+  devGlow.scale.set(DEV_PLANET_R * 3, DEV_PLANET_R * 3, 1);
+  scene.add(devGlow);
+
+  // Dev planet orbital ring
+  const devRingSegs = 80;
+  const devRingPts = [];
+  for (let i = 0; i <= devRingSegs; i++) {
+    devRingPts.push(getOrbitPos(DEV_RADIUS, DEV_INCLINATION, (i / devRingSegs) * Math.PI * 2));
+  }
+  const devRingGeo = new THREE.BufferGeometry().setFromPoints(devRingPts);
+  scene.add(new THREE.Line(devRingGeo, new THREE.LineBasicMaterial({
+    color: 0x00ff88, transparent: true, opacity: 0.08,
+  })));
+
+  // Dev planet orbital dots
+  const devDotCount = 60;
+  const devDotPos = new Float32Array(devDotCount * 3);
+  const devDotGeo = new THREE.BufferGeometry();
+  devDotGeo.setAttribute('position', new THREE.BufferAttribute(devDotPos, 3));
+  scene.add(new THREE.Points(devDotGeo, new THREE.PointsMaterial({
+    color: 0x00ff88, size: 0.04, transparent: true, opacity: 0.2, sizeAttenuation: true,
+  })));
+
+  // Dev planet label
+  const devLabelDiv = document.createElement('div');
+  devLabelDiv.className = 'tool-label dev-planet-label';
+  devLabelDiv.innerHTML = '<span class="label-icon">🛠️</span><span class="label-name">开发者星球</span>';
+  const devLabel = new CSS2DObject(devLabelDiv);
+  scene.add(devLabel);
+
+  // ─── Portal Marker on Earth ───
+  const portalCanvas = document.createElement('canvas');
+  portalCanvas.width = 96; portalCanvas.height = 96;
+  const pCtx = portalCanvas.getContext('2d');
+  const pGrad = pCtx.createRadialGradient(48, 48, 0, 48, 48, 48);
+  pGrad.addColorStop(0, 'rgba(0,255,200,1)');
+  pGrad.addColorStop(0.15, 'rgba(0,255,200,0.6)');
+  pGrad.addColorStop(0.4, 'rgba(0,200,255,0.2)');
+  pGrad.addColorStop(0.7, 'rgba(0,100,255,0.05)');
+  pGrad.addColorStop(1, 'rgba(0,0,0,0)');
+  pCtx.fillStyle = pGrad; pCtx.fillRect(0, 0, 96, 96);
+  // Ring
+  pCtx.strokeStyle = 'rgba(0,255,200,0.8)';
+  pCtx.lineWidth = 2;
+  pCtx.beginPath();
+  pCtx.arc(48, 48, 30, 0, Math.PI * 2);
+  pCtx.stroke();
+
+  const portalTex = new THREE.CanvasTexture(portalCanvas);
+  const portalMarker = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: portalTex, blending: THREE.AdditiveBlending, transparent: true, depthTest: true,
+  }));
+  portalMarker.scale.set(0.6, 0.6, 1);
+  scene.add(portalMarker);
+
+  // Portal label
+  const portalLabelDiv = document.createElement('div');
+  portalLabelDiv.className = 'tool-label portal-label';
+  portalLabelDiv.innerHTML = '<span class="label-icon">🚀</span><span class="label-name">开发者星球</span>';
+  const portalLabel = new CSS2DObject(portalLabelDiv);
+  scene.add(portalLabel);
+
+  portalLabelDiv.addEventListener('click', (e) => {
+    e.stopPropagation();
+    controls.autoRotate = false;
+    if (typeof onPortalClick === 'function') onPortalClick();
+  });
+
+  // ─── Jump Animation State ───
+  let jumpAnim = null;
+  let onDevPlanet = false;
+  let onPortalClick = null;
+
+  function easeInOutCubic(t) {
+    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  }
+
+  function jumpTo(onComplete, isReturn) {
+    let endPos, endTarget;
+    if (isReturn) {
+      endPos = new THREE.Vector3(0, 0.8 * sceneScale, mobile ? 6.8 : camDist);
+      endTarget = new THREE.Vector3(0, 0, 0);
+    } else {
+      const devPos = getOrbitPos(DEV_RADIUS, DEV_INCLINATION, devAngle);
+      endPos = devPos.clone().add(new THREE.Vector3(0, 0.4, 2.0));
+      endTarget = devPos.clone();
+    }
+    jumpAnim = {
+      startTime: performance.now(), duration: 1600,
+      startPos: camera.position.clone(), endPos,
+      startTarget: controls.target.clone(), endTarget,
+      onComplete, isReturn,
+    };
+    controls.enabled = false;
+    onDevPlanet = !isReturn;
+  }
+
+  let mobile = false;
+
   // ─── Animation ───
   let animId = null;
 
   function animate() {
     animId = requestAnimationFrame(animate);
-    controls.update();
     const t = Date.now() * 0.001;
 
+    // Jump animation
+    if (jumpAnim) {
+      const elapsed = performance.now() - jumpAnim.startTime;
+      const progress = Math.min(elapsed / jumpAnim.duration, 1);
+      const ease = easeInOutCubic(progress);
+      camera.position.lerpVectors(jumpAnim.startPos, jumpAnim.endPos, ease);
+      controls.target.lerpVectors(jumpAnim.startTarget, jumpAnim.endTarget, ease);
+      controls.update();
+      if (progress >= 1) {
+        const cb = jumpAnim.onComplete;
+        jumpAnim = null;
+        controls.enabled = true;
+        if (cb) cb();
+      }
+    } else {
+      controls.update();
+    }
+
+    // Dev planet orbit
+    devAngle = 0.7 + t * DEV_SPEED;
+    const devPos = getOrbitPos(DEV_RADIUS, DEV_INCLINATION, devAngle);
+
+    devMesh.position.copy(devPos);
+    devWire.position.copy(devPos);
+    devGlow.position.copy(devPos);
+    devLabel.position.set(devPos.x, devPos.y + DEV_PLANET_R + 0.5, devPos.z);
+
+    // Dev planet orbital dots
+    const devDotAttr = devDotGeo.attributes.position;
+    for (let i = 0; i < devDotCount; i++) {
+      const a = (i / devDotCount) * Math.PI * 2 + t * 0.05;
+      const dp = getOrbitPos(DEV_RADIUS, DEV_INCLINATION, a);
+      devDotAttr.array[i * 3] = dp.x;
+      devDotAttr.array[i * 3 + 1] = dp.y;
+      devDotAttr.array[i * 3 + 2] = dp.z;
+    }
+    devDotAttr.needsUpdate = true;
+
+    // Portal marker orbits on Earth's surface
+    const portalAngle = t * 0.06;
+    const pLat = 0.3;
+    const px = Math.cos(pLat) * Math.cos(portalAngle) * RADIUS * 1.05;
+    const py = Math.sin(pLat) * RADIUS * 1.05;
+    const pz = Math.cos(pLat) * Math.sin(portalAngle) * RADIUS * 1.05;
+    portalMarker.position.set(px, py, pz);
+    portalLabel.position.set(px * 1.3, py * 1.3 + 0.2, pz * 1.3);
+    const portalPulse = 1 + Math.sin(t * 1.2) * 0.1;
+    portalMarker.scale.set(0.6 * portalPulse, 0.6 * portalPulse, 1);
+
+    // Satellites
     satelliteData.forEach((sat) => {
       const theta = sat.startAngle + t * sat.orbit.speed;
       const pos = getOrbitPos(sat.orbit.radius, sat.orbit.inclination, theta);
@@ -279,10 +467,13 @@ export function createGlobe(container, tools, onToolClick) {
   function onResize() {
     w = container.clientWidth;
     h = container.clientHeight;
-    const mobile = w < 600;
+    mobile = w < 600;
     camera.fov = mobile ? 46 : 40;
     camera.aspect = w / h;
-    camera.position.set(0, 0.8, mobile ? 6.8 : 5.5);
+    if (!onDevPlanet) {
+      camera.position.set(0, 0.8, mobile ? 6.8 : 5.5);
+      controls.target.set(0, 0, 0);
+    }
     camera.updateProjectionMatrix();
     renderer.setSize(w, h);
     labelRenderer.setSize(w, h);
@@ -300,5 +491,7 @@ export function createGlobe(container, tools, onToolClick) {
     container.removeChild(labelRenderer.domElement);
   }
 
-  return { controls, dispose };
+  onPortalClick = onPortalClickCb;
+
+  return { controls, dispose, jumpTo, onDevPlanet: () => onDevPlanet };
 }

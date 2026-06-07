@@ -3,16 +3,17 @@
   <div ref="globeRef" class="globe-container"></div>
 
   <!-- 底部提示文字 -->
-  <div class="info-text">🌐 探索工具集 · 点击卫星打开</div>
+  <div class="info-text">{{ onDevPlanet ? '🛠️ 开发者星球 · 点击返回地球' : '🌐 探索工具集 · 点击卫星打开' }}</div>
 
   <!-- 弹出面板：点击卫星时显示，带动画过渡 -->
   <Transition name="popup">
     <div v-if="activeTool !== null" class="popup-backdrop" @click.self="closeTool">
       <div class="popup-card">
-        <!-- 面板头部：图标 + 标题 + 关闭按钮 -->
+        <!-- 面板头部：图标 + 标题 + 关闭/返回按钮 -->
         <div class="popup-header">
           <span class="popup-header-icon">{{ activeTool.icon }}</span>
           <span class="popup-header-title">{{ activeTool.name }}</span>
+          <button v-if="onDevPlanet && activeTool?.id === 'devtools'" class="popup-back-btn" @click="returnToEarth">← 返回</button>
           <button class="popup-close-btn" @click="closeTool">✕</button>
         </div>
         <!-- 面板主体：动态渲染对应的工具组件 -->
@@ -20,6 +21,14 @@
           <component :is="activeComponent" />
         </div>
       </div>
+    </div>
+  </Transition>
+
+  <!-- 跃迁特效遮罩 -->
+  <Transition name="warp">
+    <div v-if="warpActive" class="warp-overlay">
+      <div class="warp-ring"></div>
+      <div class="warp-text">{{ warpText }}</div>
     </div>
   </Transition>
 </template>
@@ -36,6 +45,11 @@ import { TOOLS, toolComponents } from './src/tools/index.js';
 const globeRef = ref(null);
 // 当前打开的工具下标（-1 表示关闭）
 const activeIndex = ref(-1);
+// 是否在开发者星球上
+const onDevPlanet = ref(false);
+// 跃迁特效
+const warpActive = ref(false);
+const warpText = ref('');
 // Three.js 场景实例引用（非响应式）
 let globe = null;
 
@@ -55,14 +69,41 @@ function openTool(index) {
 
 // 关闭工具：点击遮罩或关闭按钮时触发
 function closeTool() {
+  if (onDevPlanet.value) { returnToEarth(); return; }
   activeIndex.value = -1;
   if (globe) globe.controls.autoRotate = true;
+}
+
+// 跃迁到开发者星球
+function portalClick() {
+  warpActive.value = true;
+  warpText.value = '🚀 星际跃迁中...';
+  setTimeout(() => { warpText.value = '🛸 穿越虫洞...'; }, 500);
+  globe.jumpTo(() => {
+    onDevPlanet.value = true;
+    warpActive.value = false;
+    // 打开开发者工具
+    openTool(TOOLS.findIndex(t => t.id === 'devtools'));
+  }, false);
+}
+
+// 返回地球
+function returnToEarth() {
+  activeIndex.value = -1;
+  warpActive.value = true;
+  warpText.value = '🛸 返回地球...';
+  setTimeout(() => { warpText.value = '🌍 即将抵达...'; }, 600);
+  globe.jumpTo(() => {
+    onDevPlanet.value = false;
+    warpActive.value = false;
+    if (globe) globe.controls.autoRotate = true;
+  }, true);
 }
 
 // 组件挂载后创建 3D 地球场景
 onMounted(() => {
   if (globeRef.value) {
-    globe = createGlobe(globeRef.value, TOOLS, openTool);
+    globe = createGlobe(globeRef.value, TOOLS, openTool, portalClick);
   }
 });
 
@@ -169,6 +210,63 @@ onUnmounted(() => {
 .popup-body::-webkit-scrollbar { width: 4px; }
 .popup-body::-webkit-scrollbar-track { background: transparent; }
 .popup-body::-webkit-scrollbar-thumb { background: rgba(79,195,247,0.3); border-radius: 2px; }
+
+/* 返回按钮（开发者星球） */
+.popup-back-btn {
+  padding: 4px 14px;
+  border: 1px solid rgba(0,255,136,0.3);
+  border-radius: 8px;
+  background: rgba(0,255,136,0.1);
+  color: #00ff88;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s;
+  margin-right: auto;
+}
+.popup-back-btn:hover {
+  background: rgba(0,255,136,0.2);
+  border-color: rgba(0,255,136,0.6);
+}
+
+/* 跃迁特效遮罩 */
+.warp-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.85);
+  pointer-events: none;
+}
+.warp-ring {
+  width: 120px;
+  height: 120px;
+  border: 2px solid rgba(0,255,200,0.4);
+  border-radius: 50%;
+  animation: warpPulse 0.8s ease-in-out infinite alternate;
+  box-shadow: 0 0 40px rgba(0,255,200,0.15), inset 0 0 40px rgba(0,255,200,0.05);
+}
+@keyframes warpPulse {
+  from { transform: scale(0.8); opacity: 0.3; }
+  to { transform: scale(1.2); opacity: 0.8; }
+}
+.warp-text {
+  margin-top: 24px;
+  font-size: 20px;
+  font-weight: 300;
+  letter-spacing: 3px;
+  color: rgba(255,255,255,0.7);
+  text-shadow: 0 0 20px rgba(0,255,200,0.2);
+}
+
+/* Warp过渡动画 */
+.warp-enter-active { transition: all 0.5s ease; }
+.warp-leave-active { transition: all 0.4s ease; }
+.warp-enter-from { opacity: 0; }
+.warp-leave-to { opacity: 0; }
 
 /* Vue Transition 动画：弹入弹性曲线，淡出平滑 */
 .popup-enter-active { transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }

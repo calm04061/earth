@@ -1,4 +1,4 @@
-const STORAGE_KEY = 'earth-planet-config';
+import { dbGet, dbPut, dbDelete } from './db.js';
 
 export const DEFAULT_PLANETS = [
   {
@@ -39,26 +39,59 @@ export const DEFAULT_PLANETS = [
   },
 ];
 
-export function getConfig() {
+function defaults() {
+  return JSON.parse(JSON.stringify(DEFAULT_PLANETS));
+}
+
+export async function getConfig() {
+  // migrate from localStorage
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem('earth-planet-config');
     if (raw) {
       const parsed = JSON.parse(raw);
       if (parsed.planets && Array.isArray(parsed.planets)) {
+        localStorage.removeItem('earth-planet-config');
+        await dbPut('planetConfig', { id: 'planets', value: parsed.planets });
         return parsed.planets;
       }
     }
   } catch (e) { /* ignore */ }
-  return JSON.parse(JSON.stringify(DEFAULT_PLANETS));
+
+  try {
+    const entry = await dbGet('planetConfig', 'planets');
+    if (entry && Array.isArray(entry.value)) return entry.value;
+  } catch (e) { /* ignore */ }
+
+  return defaults();
 }
 
-export function saveConfig(planets) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({ planets }));
+export async function saveConfig(planets) {
+  await dbPut('planetConfig', { id: 'planets', value: planets });
 }
 
-export function resetConfig() {
-  localStorage.removeItem(STORAGE_KEY);
-  return JSON.parse(JSON.stringify(DEFAULT_PLANETS));
+export async function resetConfig() {
+  try { await dbDelete('planetConfig', 'planets'); } catch (e) { /* ignore */ }
+  localStorage.removeItem('earth-planet-config');
+  return defaults();
+}
+
+export async function getLastPlanet() {
+  try {
+    const entry = await dbGet('lastPlanet', 'last');
+    if (entry && entry.value) return entry.value;
+  } catch (e) { /* ignore */ }
+  // migrate from localStorage
+  const saved = localStorage.getItem('earth-last-planet');
+  if (saved) {
+    localStorage.removeItem('earth-last-planet');
+    await dbPut('lastPlanet', { id: 'last', value: saved });
+    return saved;
+  }
+  return null;
+}
+
+export async function saveLastPlanet(id) {
+  await dbPut('lastPlanet', { id: 'last', value: id });
 }
 
 export function generateId() {

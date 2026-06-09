@@ -1,6 +1,6 @@
 // 简单的 IndexedDB 封装
 const DB_NAME = 'earth-db';
-const DB_VER = 1;
+const DB_VER = 2;
 let db = null;
 
 function openDB() {
@@ -12,8 +12,24 @@ function openDB() {
       if (!d.objectStoreNames.contains('notes')) {
         d.createObjectStore('notes', { keyPath: 'id' });
       }
+      if (!d.objectStoreNames.contains('planetConfig')) {
+        d.createObjectStore('planetConfig', { keyPath: 'id' });
+      }
+      if (!d.objectStoreNames.contains('lastPlanet')) {
+        d.createObjectStore('lastPlanet', { keyPath: 'id' });
+      }
     };
     req.onsuccess = (e) => { db = e.target.result; resolve(db); };
+    req.onerror = () => reject(req.error);
+  });
+}
+
+export async function dbGet(store, key) {
+  const d = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = d.transaction(store, 'readonly');
+    const req = tx.objectStore(store).get(key);
+    req.onsuccess = () => resolve(req.result || null);
     req.onerror = () => reject(req.error);
   });
 }

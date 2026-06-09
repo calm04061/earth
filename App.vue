@@ -54,7 +54,7 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { createGlobe } from './three-globe.js';
 import { TOOLS, toolComponents } from './src/tools/index.js';
-import { getConfig as loadPlanetConfig, saveConfig as savePlanetConfig, resetConfig } from './src/planetConfig.js';
+import { getConfig as loadPlanetConfig, saveConfig as savePlanetConfig, resetConfig, getLastPlanet, saveLastPlanet } from './src/planetConfig.js';
 import { createHyperspace } from './src/globe/hyperspace.js';
 
 const globeRef = ref(null);
@@ -92,9 +92,12 @@ function closeTool() {
   if (globe) globe.controls.autoRotate = true;
 }
 
+const planetConfigs = ref([]);
+
 function jumpToPlanet(targetId) {
   showPlanetPicker.value = false;
   activeIndex.value = -1;
+  saveLastPlanet(targetId);
   warpActive.value = true;
   warpText.value = '🚀 超光速航行中…';
   setTimeout(() => { warpText.value = '🌀 曲速引擎全开…'; }, 500);
@@ -114,9 +117,6 @@ function portalClick(fromPlanetId) {
     showPlanetPicker.value = true;
   }
 }
-
-// 当前星球配置
-const planetConfigs = ref(loadPlanetConfig());
 
 // 超光速航行特效生命周期
 watch(warpActive, (v) => {
@@ -140,24 +140,26 @@ function rebuildGlobe(currentPlanet) {
 }
 
 // 保存配置
-function onSavePlanetConfig(newConfig) {
+async function onSavePlanetConfig(newConfig) {
   const currentId = globe ? globe.currentPlanetId() : 'earth';
-  savePlanetConfig(newConfig);
+  await savePlanetConfig(newConfig);
   planetConfigs.value = newConfig;
   rebuildGlobe(currentId);
 }
 
 // 重置配置
-function onResetPlanetConfig() {
+async function onResetPlanetConfig() {
   const currentId = globe ? globe.currentPlanetId() : 'earth';
-  const def = resetConfig();
+  const def = await resetConfig();
   planetConfigs.value = def;
   rebuildGlobe(currentId);
 }
 
 // 组件挂载后创建 3D 地球场景
-onMounted(() => {
-  rebuildGlobe();
+onMounted(async () => {
+  planetConfigs.value = await loadPlanetConfig();
+  const saved = await getLastPlanet();
+  rebuildGlobe(saved && saved !== 'earth' ? saved : undefined);
 });
 
 // 组件卸载时销毁地球场景，释放 GPU 资源

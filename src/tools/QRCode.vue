@@ -1,8 +1,9 @@
 <template>
   <div class="tool-qrcode">
     <div class="devtools-tabs" style="margin-bottom:12px;">
-      <button :class="['devtools-tab', { active: tab === 'gen' }]" @click="tab='gen'">生成</button>
-      <button :class="['devtools-tab', { active: tab === 'decode' }]" @click="tab='decode'">识别</button>
+      <button :class="['devtools-tab', { active: tab === 'gen' }]" @click="switchTab('gen')">生成</button>
+      <button :class="['devtools-tab', { active: tab === 'decode' }]" @click="switchTab('decode')">图片</button>
+      <button :class="['devtools-tab', { active: tab === 'scan' }]" @click="switchTab('scan')">扫码</button>
     </div>
 
     <div v-if="tab === 'gen'">
@@ -26,11 +27,28 @@
       </div>
       <div v-if="decodeError" class="devtools-error" style="margin-top:8px;">{{ decodeError }}</div>
     </div>
+
+    <div v-if="tab === 'scan'">
+      <div class="qrcode-scan-preview">
+        <video ref="videoRef" autoplay playsinline muted></video>
+        <canvas ref="scanCanvas" style="display:none"></canvas>
+        <div v-if="!scanning && !scanResult" class="qrcode-scan-overlay">
+          <button @click="startScan" class="qrcode-gen-btn">启动摄像头</button>
+        </div>
+      </div>
+      <div v-if="scanning" class="qrcode-scan-hint">正在扫描二维码...</div>
+      <div v-if="scanResult" class="devtools-pre" style="margin-top:8px;">
+        <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-bottom:4px;">识别结果</div>
+        <div>{{ scanResult }}</div>
+        <button @click="resetScan" class="qrcode-gen-btn" style="margin-top:8px;">继续扫描</button>
+      </div>
+      <div v-if="scanError" class="devtools-error" style="margin-top:8px;">{{ scanError }}</div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, onUnmounted } from 'vue';
 import QRCode from 'qrcode';
 import jsQR from 'jsqr';
 
@@ -39,6 +57,19 @@ const text = ref('');
 const dataUrl = ref('');
 const decodeResult = ref('');
 const decodeError = ref('');
+const videoRef = ref(null);
+const scanCanvas = ref(null);
+const scanning = ref(false);
+const scanResult = ref('');
+const scanError = ref('');
+let stream = null;
+let animFrame = null;
+let frameSkip = 0;
+
+function switchTab(t) {
+  stopScan();
+  tab.value = t;
+}
 
 async function generate() {
   if (!text.value.trim()) return;
@@ -75,4 +106,63 @@ function onFile(e) {
   img.onerror = () => { decodeError.value = '图片加载失败'; };
   img.src = URL.createObjectURL(file);
 }
+
+async function startScan() {
+  scanResult.value = '';
+  scanError.value = '';
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    if (videoRef.value) {
+      videoRef.value.srcObject = stream;
+      videoRef.value.onloadedmetadata = () => {
+        videoRef.value.play();
+        scanning.value = true;
+        scanLoop();
+      };
+    }
+  } catch (e) {
+    scanError.value = '无法访问摄像头: ' + (e.message || '');
+  }
+}
+
+function scanLoop() {
+  if (!scanning.value) return;
+  frameSkip++;
+  if (frameSkip % 3 === 0) {
+    const video = videoRef.value;
+    const canvas = scanCanvas.value;
+    if (video && canvas && video.readyState >= 2) {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0);
+      const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const code = jsQR(data.data, data.width, data.height);
+      if (code) {
+        scanResult.value = code.data;
+        stopScan();
+        return;
+      }
+    }
+  }
+  animFrame = requestAnimationFrame(scanLoop);
+}
+
+function stopScan() {
+  scanning.value = false;
+  if (animFrame) { cancelAnimationFrame(animFrame); animFrame = null; }
+  if (stream) {
+    stream.getTracks().forEach(t => t.stop());
+    stream = null;
+  }
+  if (videoRef.value) videoRef.value.srcObject = null;
+}
+
+function resetScan() {
+  scanResult.value = '';
+  scanError.value = '';
+  startScan();
+}
+
+onUnmounted(stopScan);
 </script>

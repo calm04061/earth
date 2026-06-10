@@ -12,7 +12,6 @@ import DrawingBoard from './DrawingBoard.vue';
 import ColorPicker from './ColorPicker.vue';
 import Toolbox from './Toolbox.vue';
 import VideoCall from './VideoCall.vue';
-import DeveloperTools from './DeveloperTools.vue';
 import QRCode from './QRCode.vue';
 import PlanetManager from './PlanetManager.vue';
 // 开发者星球子工具（以独立卫星形式出现在开发者星球轨道上）
@@ -45,11 +44,10 @@ export const TOOLS = [
   { id: 'colorpicker', name: '颜色', icon: '🎯', color: '#E57373' },
   { id: 'toolbox',   name: '工具箱', icon: '🔧', color: '#A1887F' },
   { id: 'videocall', name: '视频通话', icon: '📹', color: '#4DD0E1' },
-  { id: 'devtools', name: '开发者', icon: '🛠️', color: '#FF8A65' },
   { id: 'qrcode',   name: '二维码',   icon: '📱', color: '#26C6DA' },
   { id: 'planetmgr', name: '星球管理', icon: '🌍', color: '#00E676', permanent: true },
   // 开发者子工具（独立卫星，独立面板，不属于 devtools 分组）
-  { id: 'json',      name: 'JSON',       icon: '🔧', color: '#4FC3F7' },
+  { id: 'json',      name: 'JSON',       icon: '📋', color: '#4FC3F7' },
   { id: 'jsondiff',  name: 'JSON对比',   icon: '📊', color: '#BA68C8' },
   { id: 'timestamp', name: '时间戳',     icon: '⏰', color: '#FFB74D' },
   { id: 'base64',    name: 'Base64',    icon: '🔐', color: '#81C784' },
@@ -79,7 +77,6 @@ export const toolComponents = {
   colorpicker: ColorPicker,
   toolbox: Toolbox,
   videocall: VideoCall,
-  devtools: DeveloperTools,
   qrcode: QRCode,
   planetmgr: PlanetManager,
   // 开发者子工具

@@ -221,21 +221,21 @@ onUnmounted(() => {
   display: flex;
   justify-content: center;
   align-items: center;
-  background: rgba(0,0,0,0.55);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  background: rgba(0,0,0,0.25);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
 }
 
 /* 弹出面板卡片：半透明深色主题，圆角 + 发光边框 */
 .popup-card {
   width: min(92vw, 460px);
   max-height: 85vh;
-  background: rgba(12,16,40,0.72);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(79,195,247,0.15);
+  background: rgba(12,16,40,0.35);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(79,195,247,0.2);
   border-radius: 20px;
-  box-shadow: 0 0 40px rgba(0,0,0,0.6), 0 0 80px rgba(79,195,247,0.06);
+  box-shadow: 0 0 40px rgba(0,0,0,0.6), 0 0 60px rgba(79,195,247,0.12), 0 0 120px rgba(79,195,247,0.06);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -245,6 +245,7 @@ onUnmounted(() => {
   width: min(96vw, 900px);
   max-height: 94vh;
   border-radius: 12px;
+  box-shadow: 0 0 40px rgba(0,0,0,0.6), 0 0 60px rgba(79,195,247,0.15), 0 0 120px rgba(79,195,247,0.08);
 }
 
 /* 面板头部：图标 + 标题 + 关闭按钮横向布局，底部有分割线 */

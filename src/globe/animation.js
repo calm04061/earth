@@ -1,3 +1,4 @@
+// 动画循环模块 — 驱动所有运动（公转、卫星环绕、跃迁动画、窗口自适应）
 import * as THREE from 'three';
 import { getOrbitPos, easeInOutCubic } from './helpers.js';
 
@@ -12,19 +13,23 @@ export function createAnimation(ctx) {
   let currentPlanetId = 'earth';
   let mobile = false;
 
+  // 根据 id 查找星球数据（中心地球或轨道星球）
   function findPlanetData(id) {
     if (id === 'earth' || !id) return { isCenter: true, data: centerPlanetGroup };
     const p = orbitingPlanets.find(p => p.config.id === id);
     return p ? { isCenter: false, data: p } : null;
   }
 
+  // 批量设置卫星可见性（永久卫星不受影响）
   const setSatellitesVis = (sats, v) => {
     sats.forEach(s => { if (!s.permanent) { s.marker.visible = v; s.dot.visible = v; s.label.visible = v; } });
   };
+  // 刷新传送门可见性（只显示当前星球的传送门）
   const refreshPortalVis = () => {
     portals.forEach(p => { p.marker.visible = p.planetId === currentPlanetId; p.label.visible = p.planetId === currentPlanetId; });
   };
 
+  // 跃迁动画 — 摄像机从当前位置平滑飞到目标星球
   function jumpTo(targetId, onComplete) {
     let endPos, endTarget;
     const prev = findPlanetData(currentPlanetId);
@@ -38,6 +43,7 @@ export function createAnimation(ctx) {
       setSatellitesVis(centerPlanetGroup.satellites, v);
     };
 
+    // 目标为地球 → 回到居中视角
     if (targetId === 'earth' || !targetId) {
       endPos = new THREE.Vector3(0, 0.8 * sceneScale, mobile ? 6.8 : 5.5);
       endTarget = new THREE.Vector3(0, 0, 0);
@@ -50,6 +56,7 @@ export function createAnimation(ctx) {
       currentPlanetId = 'earth';
       refreshPortalVis();
     } else {
+      // 目标为轨道星球 → 飞到其附近
       const target = findPlanetData(targetId);
       if (!target || target.isCenter) { if (onComplete) onComplete(); return; }
       const pData = target.data;
@@ -71,6 +78,7 @@ export function createAnimation(ctx) {
       refreshPortalVis();
     }
 
+    // 记录跃迁动画参数（缓动 1600ms）
     jumpAnim = {
       startTime: performance.now(), duration: 1600,
       startPos: camera.position.clone(), endPos,
@@ -82,10 +90,12 @@ export function createAnimation(ctx) {
 
   let animId = null;
 
+  // 主渲染循环
   function animate() {
     animId = requestAnimationFrame(animate);
     const t = Date.now() * 0.001;
 
+    // 跃迁进行中 → 插值摄像机位置
     if (jumpAnim) {
       const elapsed = performance.now() - jumpAnim.startTime;
       const progress = Math.min(elapsed / jumpAnim.duration, 1);
@@ -104,6 +114,7 @@ export function createAnimation(ctx) {
       return;
     }
 
+    // 更新轨道星球公转位置
     orbitingPlanets.forEach((p) => {
       p.angle += (p.config.orbitSpeed || 0.02) * 0.016;
       const oR = p.config.orbitRadius || 4;
@@ -116,6 +127,7 @@ export function createAnimation(ctx) {
       });
       if (p.label) p.label.position.set(pos.x, pos.y + (p.config.radius || 0.5) + 0.4, pos.z);
 
+      // 轨道圆点流光动画
       if (p.orbitDotsGeo) {
         const attr = p.orbitDotsGeo.attributes.position;
         for (let i = 0; i < 60; i++) {
@@ -128,11 +140,12 @@ export function createAnimation(ctx) {
         attr.needsUpdate = true;
       }
 
-      // Follow current planet
+      // OrbitControls 跟踪当前选中星球
       if (p.config.id === currentPlanetId) {
         controls.target.copy(pos);
       }
 
+      // 更新该星球的卫星
       p.satellites.forEach((sat) => {
         const theta = sat.startAngle + t * sat.layout.speed;
         const satPos = getOrbitPos(sat.layout.radius, sat.layout.inclination, theta);
@@ -157,6 +170,7 @@ export function createAnimation(ctx) {
       });
     });
 
+    // 更新中心地球的卫星
     centerPlanetGroup.satellites.forEach((sat) => {
       const theta = sat.startAngle + t * sat.layout.speed;
       const pos = getOrbitPos(sat.layout.radius, sat.layout.inclination, theta);
@@ -180,7 +194,7 @@ export function createAnimation(ctx) {
       sat.marker.scale.set(pulse * 0.35, pulse * 0.35, 1);
     });
 
-    // Animate portals
+    // 更新传送门位置（沿星球表面旋转）
     portals.forEach((p) => {
       const angle = t * 0.06 + p.offset;
       const lat = 0.3;
@@ -204,6 +218,7 @@ export function createAnimation(ctx) {
       p.marker.scale.set(0.6 * pulse, 0.6 * pulse, 1);
     });
 
+    // 星空缓慢旋转
     stars.rotation.y += 0.0002;
     controls.update();
     renderer.render(scene, camera);
@@ -213,6 +228,7 @@ export function createAnimation(ctx) {
   refreshPortalVis();
   animate();
 
+  // 窗口尺寸变化时自适应
   function onResize(w, h) {
     mobile = w < 600;
     camera.fov = mobile ? 46 : 40;

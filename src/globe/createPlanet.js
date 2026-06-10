@@ -1,7 +1,9 @@
+// 星球创建模块 — 负责生成中心星球和轨道星球的 3D 模型
 import * as THREE from 'three';
 import { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 import { getOrbitPos, getGlowTexture, hexToThreeColor } from './helpers.js';
 
+// 生成星环渐变纹理（Canvas 水平渐变 → 中间亮两端透明）
 function createRingTexture(colorHex, opacity) {
   const canvas = document.createElement('canvas');
   canvas.width = 256;
@@ -24,6 +26,7 @@ function createRingTexture(colorHex, opacity) {
   return new THREE.CanvasTexture(canvas);
 }
 
+// 生成默认星球纹理（纯色背景 + 随机噪点方块）
 function generateDefaultTexture(color, size) {
   const canvas = document.createElement('canvas');
   canvas.width = size;
@@ -46,6 +49,7 @@ function generateDefaultTexture(color, size) {
   return new THREE.CanvasTexture(canvas);
 }
 
+// 统一加载星球纹理：有配置则异步加载，无配置则生成默认纹理
 function loadPlanetTexture(cfg, mat, textureLoader) {
   if (cfg.texture) {
     const url = cfg.texture.startsWith('data:') ? cfg.texture : import.meta.env.BASE_URL + cfg.texture;
@@ -61,6 +65,7 @@ function loadPlanetTexture(cfg, mat, textureLoader) {
   }
 }
 
+// 创建星环（RingGeometry + 渐变纹理 + AdditiveBlending）
 function addPlanetRing(scene, cfg, radius) {
   if (!cfg.ringEnabled) return null;
   const inner = radius * 1.1;
@@ -77,13 +82,14 @@ function addPlanetRing(scene, cfg, radius) {
   return ring;
 }
 
+// 创建中心星球（位于原点，含经纬线和环）
 export function createCenterPlanet(scene, cfg, textureLoader) {
   const radius = cfg.radius || 1.0;
   const color = new THREE.Color(cfg.color || '#1a2a4a');
   const emissive = new THREE.Color(cfg.emissive || '#0a1525');
   const wfColor = new THREE.Color(cfg.wireframeColor || '#4FC3F7');
   const hasAtmo = cfg.atmosphere !== false;
-
+  // 球体网格：半透明物理材质，大气层控制透明度
   const geo = new THREE.SphereGeometry(radius, 48, 48);
   const mat = new THREE.MeshPhysicalMaterial({
     color, emissive, emissiveIntensity: hasAtmo ? 0.1 : 0,
@@ -97,6 +103,7 @@ export function createCenterPlanet(scene, cfg, textureLoader) {
 
   loadPlanetTexture(cfg, mat, textureLoader);
 
+  // 极细线框叠加层（增强科技感）
   const wireGeo = new THREE.SphereGeometry(radius * 1.005, 28, 18);
   const wireMat = new THREE.MeshBasicMaterial({
     color: wfColor, wireframe: true, transparent: true, opacity: 0.025,
@@ -104,8 +111,8 @@ export function createCenterPlanet(scene, cfg, textureLoader) {
   const wireframe = new THREE.Mesh(wireGeo, wireMat);
   scene.add(wireframe);
 
+  // 纬线（每 20° 一条）
   const latLonLines = [];
-
   const addRing = (lat, clr, opacity) => {
     const y = Math.sin(lat);
     const r = Math.cos(lat) * radius * 1.006;
@@ -119,6 +126,7 @@ export function createCenterPlanet(scene, cfg, textureLoader) {
   };
   for (let i = -80; i <= 80; i += 20) addRing(i * Math.PI / 180, wfColor, i === 0 ? 0.05 : 0.02);
 
+  // 经线（每 30° 一条）
   const meridians = [];
   for (let i = 0; i < 360; i += 30) {
     const rad = i * Math.PI / 180;
@@ -137,11 +145,13 @@ export function createCenterPlanet(scene, cfg, textureLoader) {
     meridians.push(line);
   }
 
+  // 可选星环
   const ring = addPlanetRing(scene, cfg, radius);
 
   return { mesh, latLonLines, wireframe, meridians, ring, satellites: [] };
 }
 
+// 创建轨道星球（环绕中心星球公转）
 export function createOrbitingPlanet(scene, cfg, textureLoader) {
   const radius = cfg.radius || 1.0;
   const color = new THREE.Color(cfg.color || '#1a2a4a');
@@ -161,6 +171,7 @@ export function createOrbitingPlanet(scene, cfg, textureLoader) {
 
   loadPlanetTexture(cfg, mat, textureLoader);
 
+  // 轨道星球数据容器
   const pData = {
     config: cfg, mesh,
     angle: Math.random() * Math.PI * 2,
@@ -170,6 +181,7 @@ export function createOrbitingPlanet(scene, cfg, textureLoader) {
     orbitRing: null, orbitDotsGeo: null, orbitDots: null,
   };
 
+  // 线框覆盖层
   const wire2 = new THREE.Mesh(
     new THREE.SphereGeometry(radius * 1.008, 20, 12),
     new THREE.MeshBasicMaterial({ color: planetColor, wireframe: true, transparent: true, opacity: 0.15 })
@@ -177,6 +189,7 @@ export function createOrbitingPlanet(scene, cfg, textureLoader) {
   scene.add(wire2);
   pData.objects.push(wire2);
 
+  // 大气层辉光精灵
   if (hasAtmo) {
     const glowTex = getGlowTexture(`rgba(${planetColor.r*255|0},${planetColor.g*255|0},${planetColor.b*255|0},1)`);
     const glow = new THREE.Sprite(new THREE.SpriteMaterial({
@@ -187,6 +200,7 @@ export function createOrbitingPlanet(scene, cfg, textureLoader) {
     pData.objects.push(glow);
   }
 
+  // 轨道指示环（半透明圆圈）
   const oR = cfg.orbitRadius || 4;
   const oI = cfg.orbitInclination || 0;
   const ringPts = [];
@@ -200,6 +214,7 @@ export function createOrbitingPlanet(scene, cfg, textureLoader) {
   scene.add(ringLine);
   pData.objects.push(ringLine);
 
+  // 轨道移动圆点（沿轨道运动的小光点）
   const dotCount = 60;
   const dotPos = new Float32Array(dotCount * 3);
   const dotGeo = new THREE.BufferGeometry();
@@ -211,12 +226,14 @@ export function createOrbitingPlanet(scene, cfg, textureLoader) {
   pData.objects.push(dotPoints);
   pData.orbitDotsGeo = dotGeo;
 
+  // 可选星环（类似土星环）
   const ring = addPlanetRing(scene, cfg, radius);
   if (ring) {
     pData.objects.push(ring);
     pData.ring = ring;
   }
 
+  // CSS2D 标签（星球名称）
   const labelDiv = document.createElement('div');
   labelDiv.className = 'tool-label dev-planet-label';
   labelDiv.innerHTML = `<span class="label-icon">🪐</span><span class="label-name">${cfg.name}</span>`;
@@ -224,6 +241,7 @@ export function createOrbitingPlanet(scene, cfg, textureLoader) {
   scene.add(label);
   pData.label = label;
 
+  // 初始隐藏（页面加载时只显示地球）
   pData.objects.forEach(o => o.visible = false);
   label.visible = false;
 

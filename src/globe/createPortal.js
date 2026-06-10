@@ -1,7 +1,9 @@
+// 传送门模块 — 生成"星际旅行"入口（点击后跃迁到目标星球）
 import * as THREE from 'three';
 import { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 
 let sharedTexture = null;
+// 生成共享传送门纹理（径向渐变 + 圆形边框，缓存复用）
 function getPortalTexture() {
   if (sharedTexture) return sharedTexture;
   const canvas = document.createElement('canvas');
@@ -25,6 +27,7 @@ function getPortalTexture() {
   return sharedTexture;
 }
 
+// 为指定星球创建传送门精灵 + CSS2D 标签
 export function createPortalForPlanet(scene, controls, planetConfig, onClick) {
   const texture = getPortalTexture();
   const marker = new THREE.Sprite(new THREE.SpriteMaterial({
@@ -39,6 +42,7 @@ export function createPortalForPlanet(scene, controls, planetConfig, onClick) {
   const label = new CSS2DObject(labelDiv);
   scene.add(label);
 
+  // 点击传送门 → 触发星球跃迁
   labelDiv.addEventListener('click', (e) => {
     e.stopPropagation();
     controls.autoRotate = false;

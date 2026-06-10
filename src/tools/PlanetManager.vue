@@ -1,5 +1,7 @@
+<!-- 星球管理工具 — 增删改星球配置，分配工具到各星球 -->
 <template>
   <div class="tool-planet-mgr">
+    <!-- 星球标签页切换 + 添加星球按钮 -->
     <div class="pm-planet-tabs">
       <button v-for="p in planets" :key="p.id"
         :class="['pm-tab', { active: activeId === p.id }]"
@@ -7,6 +9,7 @@
       <button class="pm-tab pm-add" @click="addPlanet">+</button>
     </div>
 
+    <!-- 选中星球的编辑表单 -->
     <div v-if="active" class="pm-form">
       <div class="pm-field">
         <label>名称</label>
@@ -81,12 +84,13 @@
         </div>
       </template>
 
+      <!-- 工具分配：勾选该星球上可用的工具 -->
       <div class="pm-field">
         <label>分配工具</label>
         <div class="pm-tools-grid">
           <label v-for="tool in allTools" :key="tool.id" class="pm-tool-item">
             <input type="checkbox" :checked="active.tools.includes(tool.id)"
-              @change="toggleTool(tool.id)" />
+              @change="toggleTool(tool.id)" :disabled="tool.permanent" />
             <span>{{ tool.icon }} {{ tool.name }}</span>
           </label>
         </div>
@@ -111,6 +115,7 @@ const props = defineProps({
 });
 const emit = defineEmits(['update:modelValue']);
 
+// 深拷贝当前配置作为本地编辑副本
 const planets = ref(JSON.parse(JSON.stringify(props.modelValue)));
 const activeId = ref(planets.value[0]?.id || '');
 const active = computed(() => planets.value.find(p => p.id === activeId.value));
@@ -118,6 +123,7 @@ const allTools = TOOLS;
 
 function select(id) { activeId.value = id; }
 
+// 添加新星球（随机初始参数）
 function addPlanet() {
   const idx = planets.value.length;
   const newP = {
@@ -136,12 +142,13 @@ function addPlanet() {
     ringColor: '#a0c4ff',
     ringSize: 1.8,
     ringTilt: 0.3,
-    tools: [],
+    tools: ['planetmgr'],
   };
   planets.value.push(newP);
   activeId.value = newP.id;
 }
 
+// 删除当前星球（保留至少一个）
 function deletePlanet() {
   if (planets.value.length <= 1) return;
   const idx = planets.value.findIndex(p => p.id === activeId.value);
@@ -149,13 +156,17 @@ function deletePlanet() {
   activeId.value = planets.value[Math.min(idx, planets.value.length - 1)]?.id || planets.value[0]?.id || '';
 }
 
+// 切换工具的勾选状态
 function toggleTool(toolId) {
   if (!active.value) return;
+  const tool = allTools.find(t => t.id === toolId);
+  if (tool && tool.permanent) return;
   const idx = active.value.tools.indexOf(toolId);
   if (idx >= 0) active.value.tools.splice(idx, 1);
   else active.value.tools.push(toolId);
 }
 
+// 上传贴图文件 → 转为 data URL
 function onTextureFile(e) {
   const file = e.target.files[0];
   if (!file) return;
@@ -166,10 +177,16 @@ function onTextureFile(e) {
   reader.readAsDataURL(file);
 }
 
+// 保存：确保永久工具存在，触发父组件更新
 function save() {
+  const permanentIds = allTools.filter(t => t.permanent).map(t => t.id);
+  planets.value.forEach(p => {
+    permanentIds.forEach(id => { if (!p.tools.includes(id)) p.tools.push(id); });
+  });
   emit('update:modelValue', JSON.parse(JSON.stringify(planets.value)));
 }
 
+// 重置为默认配置
 function resetAll() {
   planets.value = JSON.parse(JSON.stringify(DEFAULT_PLANETS));
   activeId.value = planets.value[0]?.id || '';

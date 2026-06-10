@@ -47,6 +47,11 @@
       <div class="warp-text">{{ warpText }}</div>
     </div>
   </Transition>
+
+  <!-- 提示通知 -->
+  <Transition name="toast">
+    <div v-if="toast.show" class="toast" :class="toast.type">{{ toast.msg }}</div>
+  </Transition>
 </template>
 
 <script setup>
@@ -67,6 +72,13 @@ const warpText = ref('');
 const warpContainer = ref(null);
 let warpInstance = null;
 let globe = null;
+let toastTimer = null;
+const toast = ref({ show: false, msg: '', type: 'success' });
+function showToast(msg, type = 'success') {
+  if (toastTimer) clearTimeout(toastTimer);
+  toast.value = { show: true, msg, type };
+  toastTimer = setTimeout(() => { toast.value.show = false; }, 2000);
+}
 
 const activeTool = computed(() =>
   activeIndex.value >= 0 ? TOOLS[activeIndex.value] : null
@@ -142,17 +154,27 @@ function rebuildGlobe(currentPlanet) {
 // 保存配置
 async function onSavePlanetConfig(newConfig) {
   const currentId = globe ? globe.currentPlanetId() : 'earth';
-  await savePlanetConfig(newConfig);
-  planetConfigs.value = newConfig;
-  rebuildGlobe(currentId);
+  try {
+    await savePlanetConfig(newConfig);
+    planetConfigs.value = newConfig;
+    rebuildGlobe(currentId);
+    showToast('✅ 配置已保存');
+  } catch (e) {
+    showToast('❌ 保存失败: ' + (e.message || ''), 'error');
+  }
 }
 
 // 重置配置
 async function onResetPlanetConfig() {
   const currentId = globe ? globe.currentPlanetId() : 'earth';
-  const def = await resetConfig();
-  planetConfigs.value = def;
-  rebuildGlobe(currentId);
+  try {
+    const def = await resetConfig();
+    planetConfigs.value = def;
+    rebuildGlobe(currentId);
+    showToast('✅ 已恢复默认配置');
+  } catch (e) {
+    showToast('❌ 重置失败: ' + (e.message || ''), 'error');
+  }
 }
 
 // 组件挂载后创建 3D 地球场景
@@ -208,9 +230,9 @@ onUnmounted(() => {
 .popup-card {
   width: min(92vw, 460px);
   max-height: 85vh;
-  background: rgba(12,16,40,0.92);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: rgba(12,16,40,0.72);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
   border: 1px solid rgba(79,195,247,0.15);
   border-radius: 20px;
   box-shadow: 0 0 40px rgba(0,0,0,0.6), 0 0 80px rgba(79,195,247,0.06);
@@ -374,6 +396,36 @@ onUnmounted(() => {
 .warp-leave-active { transition: all 0.4s ease; }
 .warp-enter-from { opacity: 0; }
 .warp-leave-to { opacity: 0; }
+
+/* 提示通知 */
+.toast {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 300;
+  padding: 10px 24px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+  pointer-events: none;
+  white-space: nowrap;
+}
+.toast.success {
+  background: rgba(0,230,118,0.15);
+  border: 1px solid rgba(0,230,118,0.3);
+  color: #00E676;
+}
+.toast.error {
+  background: rgba(255,82,82,0.15);
+  border: 1px solid rgba(255,82,82,0.3);
+  color: #FF5252;
+}
+.toast-enter-active { transition: all 0.3s ease; }
+.toast-leave-active { transition: all 0.2s ease; }
+.toast-enter-from { opacity: 0; transform: translateX(-50%) translateY(12px); }
+.toast-leave-to { opacity: 0; transform: translateX(-50%) translateY(-8px); }
 
 /* Vue Transition 动画：弹入弹性曲线，淡出平滑 */
 .popup-enter-active { transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }

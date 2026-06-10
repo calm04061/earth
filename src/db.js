@@ -1,8 +1,9 @@
-// 简单的 IndexedDB 封装
+// 简单的 IndexedDB 封装 — 提供 get/put/delete/clear 操作
 const DB_NAME = 'earth-db';
 const DB_VER = 2;
 let db = null;
 
+// 打开数据库连接（单例）
 function openDB() {
   return new Promise((resolve, reject) => {
     if (db) return resolve(db);
@@ -24,6 +25,7 @@ function openDB() {
   });
 }
 
+// 读取单条记录
 export async function dbGet(store, key) {
   const d = await openDB();
   return new Promise((resolve, reject) => {
@@ -34,6 +36,7 @@ export async function dbGet(store, key) {
   });
 }
 
+// 读取整个 store
 export async function dbGetAll(store) {
   const d = await openDB();
   return new Promise((resolve, reject) => {
@@ -44,6 +47,7 @@ export async function dbGetAll(store) {
   });
 }
 
+// 写入/更新记录
 export async function dbPut(store, data) {
   const d = await openDB();
   return new Promise((resolve, reject) => {
@@ -54,6 +58,7 @@ export async function dbPut(store, data) {
   });
 }
 
+// 删除记录
 export async function dbDelete(store, id) {
   const d = await openDB();
   return new Promise((resolve, reject) => {
@@ -64,6 +69,7 @@ export async function dbDelete(store, id) {
   });
 }
 
+// 清空整个 store
 export async function dbClear(store) {
   const d = await openDB();
   return new Promise((resolve, reject) => {

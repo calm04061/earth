@@ -1,4 +1,4 @@
-// 工具组件导入
+// 工具组件导入 — 所有卫星工具和开发者子工具
 import Calculator from './Calculator.vue';
 import Weather from './Weather.vue';
 import Notes from './Notes.vue';
@@ -15,7 +15,7 @@ import VideoCall from './VideoCall.vue';
 import DeveloperTools from './DeveloperTools.vue';
 import QRCode from './QRCode.vue';
 import PlanetManager from './PlanetManager.vue';
-// 开发者子工具作为独立组件
+// 开发者星球子工具（以独立卫星形式出现在开发者星球轨道上）
 import JsonFormat from './devtools/JsonFormat.vue';
 import JsonDiff from './devtools/JsonDiff.vue';
 import TimestampTool from './devtools/Timestamp.vue';
@@ -48,7 +48,7 @@ export const TOOLS = [
   { id: 'devtools', name: '开发者', icon: '🛠️', color: '#FF8A65' },
   { id: 'qrcode',   name: '二维码',   icon: '📱', color: '#26C6DA' },
   { id: 'planetmgr', name: '星球管理', icon: '🌍', color: '#00E676', permanent: true },
-  // 开发者子工具（独立卫星 & 独立面板）
+  // 开发者子工具（独立卫星，独立面板，不属于 devtools 分组）
   { id: 'json',      name: 'JSON',       icon: '🔧', color: '#4FC3F7' },
   { id: 'jsondiff',  name: 'JSON对比',   icon: '📊', color: '#BA68C8' },
   { id: 'timestamp', name: '时间戳',     icon: '⏰', color: '#FFB74D' },
@@ -64,7 +64,7 @@ export const TOOLS = [
   { id: 'length',    name: '长度',       icon: '📏', color: '#AB47BC' },
 ];
 
-// 工具 ID 到 Vue 组件的映射表
+// 工具 ID 到 Vue 组件的映射表（用于动态渲染 <component :is>）
 export const toolComponents = {
   calculator: Calculator,
   weather: Weather,
@@ -82,7 +82,7 @@ export const toolComponents = {
   devtools: DeveloperTools,
   qrcode: QRCode,
   planetmgr: PlanetManager,
-  // 开发者子工具组件
+  // 开发者子工具
   json: JsonFormat,
   jsondiff: JsonDiff,
   timestamp: TimestampTool,

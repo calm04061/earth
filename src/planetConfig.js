@@ -1,5 +1,7 @@
+// 星球配置管理模块 — 默认星球、配置持久化、最后访问记录
 import { dbGet, dbPut, dbDelete } from './db.js';
 
+// 默认星球配置（地球 + 开发者星球）
 export const DEFAULT_PLANETS = [
   {
     id: 'earth',
@@ -39,18 +41,20 @@ export const DEFAULT_PLANETS = [
   },
 ];
 
+// 深拷贝默认配置
 function defaults() {
   return JSON.parse(JSON.stringify(DEFAULT_PLANETS));
 }
 
+// 获取星球配置（优先从 IndexedDB 读取，兼容旧 localStorage 迁移）
 export async function getConfig() {
-  // migrate from localStorage
   try {
     const raw = localStorage.getItem('earth-planet-config');
     if (raw) {
       const parsed = JSON.parse(raw);
       if (parsed.planets && Array.isArray(parsed.planets)) {
         localStorage.removeItem('earth-planet-config');
+        ensurePlanetMgr(parsed.planets);
         await dbPut('planetConfig', { id: 'planets', value: parsed.planets });
         return parsed.planets;
       }
@@ -59,28 +63,42 @@ export async function getConfig() {
 
   try {
     const entry = await dbGet('planetConfig', 'planets');
-    if (entry && Array.isArray(entry.value)) return entry.value;
+    if (entry && Array.isArray(entry.value)) {
+      ensurePlanetMgr(entry.value);
+      return entry.value;
+    }
   } catch (e) { /* ignore */ }
 
   return defaults();
 }
 
+// 确保 planetmgr 工具存在于星球配置中
+function ensurePlanetMgr(planets) {
+  const hasMgr = planets.some(p => p.tools && p.tools.includes('planetmgr'));
+  if (!hasMgr && planets.length > 0) {
+    if (!planets[0].tools) planets[0].tools = [];
+    if (!planets[0].tools.includes('planetmgr')) planets[0].tools.push('planetmgr');
+  }
+}
+
+// 保存星球配置到 IndexedDB
 export async function saveConfig(planets) {
   await dbPut('planetConfig', { id: 'planets', value: planets });
 }
 
+// 重置为默认配置
 export async function resetConfig() {
   try { await dbDelete('planetConfig', 'planets'); } catch (e) { /* ignore */ }
   localStorage.removeItem('earth-planet-config');
   return defaults();
 }
 
+// 读取上次访问的星球 ID
 export async function getLastPlanet() {
   try {
     const entry = await dbGet('lastPlanet', 'last');
     if (entry && entry.value) return entry.value;
   } catch (e) { /* ignore */ }
-  // migrate from localStorage
   const saved = localStorage.getItem('earth-last-planet');
   if (saved) {
     localStorage.removeItem('earth-last-planet');
@@ -90,10 +108,12 @@ export async function getLastPlanet() {
   return null;
 }
 
+// 保存最后访问的星球 ID
 export async function saveLastPlanet(id) {
   await dbPut('lastPlanet', { id: 'last', value: id });
 }
 
+// 生成唯一的星球 ID
 export function generateId() {
   return 'planet_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
 }

@@ -9,11 +9,19 @@
 <script setup>
 import { ref } from 'vue';
 const left = ref(''); const right = ref(''); const result = ref('');
+function sortKeys(o) {
+  if (o !== null && typeof o === 'object' && !Array.isArray(o)) {
+    return Object.keys(o).sort().reduce((acc, k) => { acc[k] = sortKeys(o[k]); return acc; }, {});
+  }
+  if (Array.isArray(o)) return o.map(sortKeys);
+  return o;
+}
 function diff() {
   const a = left.value.trim(), b = right.value.trim();
   if (!a && !b) { result.value = '请粘贴 JSON'; return; }
   try {
-    const s1 = JSON.stringify(JSON.parse(a), null, 2), s2 = JSON.stringify(JSON.parse(b), null, 2);
+    const o1 = sortKeys(JSON.parse(a)), o2 = sortKeys(JSON.parse(b));
+    const s1 = JSON.stringify(o1, null, 2), s2 = JSON.stringify(o2, null, 2);
     if (s1 === s2) { result.value = '✅ 完全相同'; return; }
     const l1 = s1.split('\n'), l2 = s2.split('\n');
     const max = Math.max(l1.length, l2.length);

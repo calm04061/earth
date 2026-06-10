@@ -1,3 +1,4 @@
+<!-- 二维码工具 — 生成/解码/摄像头扫描二维码 -->
 <template>
   <div class="tool-qrcode">
     <div class="devtools-tabs" style="margin-bottom:12px;">
@@ -6,6 +7,7 @@
       <button :class="['devtools-tab', { active: tab === 'scan' }]" @click="switchTab('scan')">扫码</button>
     </div>
 
+    <!-- 生成二维码 -->
     <div v-if="tab === 'gen'">
       <div class="qrcode-input-row">
         <input v-model="text" placeholder="输入文本或链接..." @keydown.enter="generate" />
@@ -17,6 +19,7 @@
       </div>
     </div>
 
+    <!-- 从图片解码 -->
     <div v-if="tab === 'decode'">
       <div class="qrcode-input-row">
         <input type="file" accept="image/*" @change="onFile" style="flex:1;padding:8px;background:rgba(255,255,255,0.05);border-radius:8px;color:#fff;border:1px solid rgba(255,255,255,0.1);" />
@@ -28,6 +31,7 @@
       <div v-if="decodeError" class="devtools-error" style="margin-top:8px;">{{ decodeError }}</div>
     </div>
 
+    <!-- 摄像头实时扫码 -->
     <div v-if="tab === 'scan'">
       <div class="qrcode-scan-preview">
         <video ref="videoRef" autoplay playsinline muted></video>
@@ -71,6 +75,7 @@ function switchTab(t) {
   tab.value = t;
 }
 
+// 生成二维码（使用 qrcode 库）
 async function generate() {
   if (!text.value.trim()) return;
   try {
@@ -78,6 +83,7 @@ async function generate() {
   } catch {}
 }
 
+// 下载生成的二维码图片
 function download() {
   if (!dataUrl.value) return;
   const a = document.createElement('a');
@@ -86,6 +92,7 @@ function download() {
   a.click();
 }
 
+// 上传图片 → 使用 jsQR 库解码
 function onFile(e) {
   const file = e.target.files[0];
   if (!file) return;
@@ -107,6 +114,7 @@ function onFile(e) {
   img.src = URL.createObjectURL(file);
 }
 
+// 启动后置摄像头实时扫码
 async function startScan() {
   scanResult.value = '';
   scanError.value = '';
@@ -125,6 +133,7 @@ async function startScan() {
   }
 }
 
+// 逐帧扫描（每 3 帧处理一次以减少 CPU 占用）
 function scanLoop() {
   if (!scanning.value) return;
   frameSkip++;
@@ -148,6 +157,7 @@ function scanLoop() {
   animFrame = requestAnimationFrame(scanLoop);
 }
 
+// 停止摄像头和扫码循环
 function stopScan() {
   scanning.value = false;
   if (animFrame) { cancelAnimationFrame(animFrame); animFrame = null; }
@@ -158,6 +168,7 @@ function stopScan() {
   if (videoRef.value) videoRef.value.srcObject = null;
 }
 
+// 重置并重新扫码
 function resetScan() {
   scanResult.value = '';
   scanError.value = '';
